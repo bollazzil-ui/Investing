@@ -1,0 +1,267 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Palette. Categorical hues and the diverging pair come from a validated
+ * set (CVD-safe in both modes); the dark column is re-stepped for the dark
+ * surface rather than being an automatic flip.
+ */
+:root {
+  color-scheme: light;
+
+  --page: #f4f4f1;
+  --surface-1: #fcfcfb;
+  --surface-2: #efefeb;
+  --border: #e0dfda;
+  --border-strong: #c9c8c1;
+
+  --ink-1: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #7c7b74;
+
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7f0fc;
+
+  /* Categorical slots, fixed order — never cycled. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --series-other: #9d9c94;
+
+  /* Diverging pair for drift: blue = underweight, red = overweight. */
+  --diverge-neg: #2a78d6;
+  --diverge-pos: #d03b3b;
+  --diverge-mid: #dedcd6;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --good-soft: #e6f5e6;
+  --warning-soft: #fdf3dd;
+  --critical-soft: #fae9e9;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 3px rgb(0 0 0 / 0.04);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --border: #313130;
+  --border-strong: #464643;
+
+  --ink-1: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #8d8c83;
+
+  --accent: #3987e5;
+  --accent-ink: #06182c;
+  --accent-soft: #16283d;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-other: #6f6e67;
+
+  --diverge-neg: #3987e5;
+  --diverge-pos: #e66767;
+  --diverge-mid: #3a3a37;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --good-soft: #122712;
+  --warning-soft: #2e2609;
+  --critical-soft: #2e1414;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface-1);
+  --color-subtle: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-critical: var(--critical);
+  --color-good-soft: var(--good-soft);
+  --color-warning-soft: var(--warning-soft);
+  --color-critical-soft: var(--critical-soft);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink-1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures everywhere numbers are compared down a column. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+@layer components {
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 0.875rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .field {
+    width: 100%;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.875rem;
+    color: var(--ink-1);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .field:hover {
+    border-color: var(--border-strong);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .field-invalid,
+  .field-invalid:hover {
+    border-color: var(--critical);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--ink-1);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .btn:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 88%, black);
+    border-color: color-mix(in srgb, var(--accent) 88%, black);
+  }
+  .btn-ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink-2);
+  }
+  .btn-danger:hover {
+    background: var(--critical-soft);
+    border-color: var(--critical);
+    color: var(--critical);
+  }
+
+  .label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ink-2);
+    margin-bottom: 0.3rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .th {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-align: right;
+    padding: 0.5rem 0.6rem;
+    white-space: nowrap;
+  }
+  .th-left {
+    text-align: left;
+  }
+  .td {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.875rem;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .td-left {
+    text-align: left;
+  }
+
+  .scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Hide the spinners; these are finance inputs, not steppers. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
