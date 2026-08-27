@@ -139,6 +139,12 @@ export function SettingsPanel({
             hint="Off means overweight positions are simply left alone and only buys are planned."
           />
           <Toggle
+            checked={settings.useLeftoverCash}
+            onChange={(v) => set({ useLeftoverCash: v })}
+            label="Use up the leftover cash"
+            hint="After the main plan, buy extra whole shares of whatever is still furthest below target."
+          />
+          <Toggle
             checked={settings.allowFractionalShares}
             onChange={(v) => set({ allowFractionalShares: v })}
             label="Fractional shares"

@@ -20,6 +20,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
     allowSell: true,
     feeMode: 'all',
     allowFractionalShares: false,
+    useLeftoverCash: true,
   },
   positions: [
     {

@@ -199,6 +199,12 @@ export function TradePlan({
               <strong className="num font-semibold text-[var(--ink-1)]">
                 {formatMoney(result.feesTotal, currency)}
               </strong>
+              {Math.abs(result.feesReserved - result.feesTotal) > 1e-9 && (
+                <span className="num text-[var(--ink-3)]">
+                  {' '}
+                  ({formatMoney(result.feesReserved, currency)} reserved)
+                </span>
+              )}
             </span>
             <span>
               Cash left{' '}

@@ -7,7 +7,28 @@ allocation, given the cash you want to add and the trading fees you will pay.
 Unlike the spreadsheet it is not limited to three ETFs — positions are added,
 removed, reordered and reweighted freely.
 
-![Overview](docs/screenshot-light.png)
+## The main flow
+
+**Guided** mode walks the question end to end in four steps:
+
+1. **Your money** — how much you are investing, and whether the plan may sell
+   (buy-only is the default: new money goes where it is most needed, nothing is
+   sold, no extra fees, no tax events).
+2. **Your products** — add anything new, remove what you no longer want. A
+   brand-new product is simply one with 0 shares held.
+3. **Your split** — the target share for each product, on sliders that keep the
+   total at 100% for you.
+4. **What to buy** — the answer: *buy 131 shares of EIMI, 95 of SWDA, 191 of
+   IUSN*, with the amount in both currencies, what you will hold afterwards, and
+   where the split lands.
+
+![Guided flow](docs/screenshot-guided.png)
+
+**Advanced** mode is the same engine as a single dense dashboard — every
+position, setting and intermediate figure at once. The toggle is in the header
+and your choice is remembered.
+
+![Advanced view](docs/screenshot-light.png)
 
 ---
 
@@ -62,6 +83,34 @@ Both changes mean the app's final share counts can differ slightly from the
 sheet's for the same inputs. The intermediate chain is identical, and
 `src/lib/calc.test.ts` pins it to the spreadsheet's own numbers.
 
+### Making the plan actually placeable
+
+Three guarantees hold whatever the settings:
+
+- **It never spends more cash than you have.** In buy-only mode, targets are
+  derived from the whole portfolio but purchases are capped at the money on
+  hand; when the targets are out of reach every buy is scaled back by the same
+  factor, so each underweight product moves the same fraction of the way and
+  none is starved. The app then says what it would take to close the gap
+  entirely — and offers to raise the amount, or to allow selling, in one click.
+- **Rounding never makes it unaffordable.** Sells round toward zero, so they
+  raise less than the ideal while the buys they fund do not shrink. Any plan
+  that ends up over budget has its least-needed buy trimmed a share at a time
+  until it fits.
+- **Leftover cash is put to work.** Rounding down strands a little money against
+  every position at once. The leftover pass buys extra whole shares of whichever
+  product is still furthest below target, as long as the share brings it closer
+  to target than skipping it would.
+
+### Fees: reserved vs. charged
+
+`feeMode: 'all'` reserves every position's fee before the targets are computed —
+conservative budgeting, and what the spreadsheet did. But a fee is only really
+paid on a position that trades, so the app reports both: **reserved** feeds the
+target chain, **charged** is what your broker will actually bill and what the
+leftover cash is measured against. A plan that trades nothing is charged
+nothing.
+
 ### Settings that change the plan
 
 | Setting | Effect |
@@ -73,6 +122,7 @@ sheet's for the same inputs. The intermediate chain is identical, and
 | **Fees — Only if traded** | A fee is reserved only where a trade is actually planned. Fees and trades depend on each other, so this is resolved by iterating to a fixed point. |
 | **Allow selling** | Off = buy-only rebalancing; overweight positions are left alone. |
 | **Fractional shares** | Skips whole-share rounding entirely. |
+| **Use up the leftover cash** | After the main plan, buy extra whole shares of whatever is still furthest below target. |
 | **Hold — never trade** (per position) | The position counts toward the total but is never bought or sold, and is charged no fee. |
 
 The app warns when target weights do not sum to 100%, when the plan needs more
@@ -80,11 +130,15 @@ cash than is available, and when a price or exchange rate is missing.
 
 ---
 
-## Adding positions
+## Adding and removing products
 
-**+ Add position** appends a row; the new row is pre-filled with whatever target
-weight is still unallocated. Expand a row (▸) for full name, ISIN, quote symbol
-and the *hold* flag.
+In **guided** mode, *Add a product* offers a blank row or one of a few presets
+that fill in name, ISIN and currency; price, shares and fee keep your own
+defaults. Removing a product you still hold asks first.
+
+In **advanced** mode, *+ Add position* appends a row pre-filled with whatever
+target weight is still unallocated. Expand a row (▸) for full name, ISIN, quote
+symbol and the *hold* flag.
 
 - **Normalise to 100%** scales every target proportionally so they add up.
 - **Equal weights** gives every position `1/n`.
@@ -148,13 +202,16 @@ src/
   types.ts              Domain model
   lib/
     calc.ts             The rebalancing engine (pure, no React)
-    calc.test.ts        Pinned to the spreadsheet's own numbers
+    calc.test.ts        Pinned to the spreadsheet's own numbers, plus the
+                        affordability and leftover-cash guarantees
     quotes.ts           Optional FX and price fetching
     storage.ts          localStorage + import hydration
     exporters.ts        CSV / JSON output
     format.ts           Locale-aware formatting and parsing
     colors.ts           Categorical colour assignment
-  components/           UI, one file per section
+  components/
+    guided/             The four-step flow
+    *.tsx               The advanced dashboard
   App.tsx               State, wiring, import/export
 ```
 

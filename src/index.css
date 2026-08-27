@@ -259,6 +259,68 @@ body {
   }
 }
 
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  margin-top: -6px;
+  border-radius: 999px;
+  background: var(--thumb, var(--accent));
+  border: 2px solid var(--surface-1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+.range::-moz-range-thumb {
+  height: 14px;
+  width: 14px;
+  border-radius: 999px;
+  background: var(--thumb, var(--accent));
+  border: 2px solid var(--surface-1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+.range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+/* The trade plan is meant to be taken to a broker, so make it print cleanly. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  li,
+  tr {
+    break-inside: avoid;
+  }
+}
+
 /* Hide the spinners; these are finance inputs, not steppers. */
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {

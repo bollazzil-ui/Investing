@@ -26,6 +26,7 @@ export function hydrate(raw: unknown): Portfolio {
       allowSell: s.allowSell ?? true,
       feeMode: s.feeMode === 'traded' ? 'traded' : 'all',
       allowFractionalShares: s.allowFractionalShares ?? false,
+      useLeftoverCash: s.useLeftoverCash ?? true,
     },
     positions: positions.map((p, i) => ({
       id: typeof p?.id === 'string' && p.id ? p.id : `p_${i}_${Math.random().toString(36).slice(2, 8)}`,
@@ -110,4 +111,24 @@ export function downloadFile(filename: string, contents: string, mime: string): 
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+const MODE_KEY = 'aufteilungsrechner.mode';
+
+export type ViewMode = 'guided' | 'advanced';
+
+export function loadMode(): ViewMode {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'advanced' ? 'advanced' : 'guided';
+  } catch {
+    return 'guided';
+  }
+}
+
+export function saveMode(mode: ViewMode): void {
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
 }

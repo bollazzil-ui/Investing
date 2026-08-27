@@ -47,6 +47,12 @@ export interface Settings {
   feeMode: FeeMode;
   /** Skip share rounding entirely (fractional-share brokers). */
   allowFractionalShares: boolean;
+  /**
+   * After the main plan, spend what is left of the cash on extra whole shares
+   * of whichever position is still furthest below its target. Rounding down
+   * leaves money unspent on every position at once; this puts it to work.
+   */
+  useLeftoverCash: boolean;
 }
 
 export interface Portfolio {
@@ -99,8 +105,15 @@ export interface CalcResult {
   /** Value of all holdings before trading. */
   currentTotal: number;
   cash: number;
+  /** Fees the final plan will actually be charged: one per position traded. */
   feesTotal: number;
-  /** currentTotal + cash − feesTotal: the base for every target value. */
+  /**
+   * Fees the target chain set aside before planning. With `feeMode: 'all'` this
+   * reserves every position's fee up front, so it can exceed what is finally
+   * charged — the difference is simply budgeted headroom that went unused.
+   */
+  feesReserved: number;
+  /** currentTotal + cash − feesReserved: the base for every target value. */
   investable: number;
   /** Net money spent on trades (buys minus sells). */
   netTradeValue: number;
@@ -110,5 +123,14 @@ export interface CalcResult {
   newTotal: number;
   /** Sum of all target weights; should be 1. */
   targetWeightSum: number;
+  /** Extra shares the leftover-cash pass added on top of the main plan. */
+  leftoverShares: number;
+  /**
+   * True when buy-only mode could not reach the targets on the available cash,
+   * so every purchase was scaled back proportionally.
+   */
+  budgetLimited: boolean;
+  /** In buy-only mode, the cash that would be needed to reach every target exactly. */
+  cashForFullTarget: number;
   warnings: string[];
 }

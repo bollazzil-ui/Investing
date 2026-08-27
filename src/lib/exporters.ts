@@ -66,7 +66,8 @@ export function tradePlanCsv(portfolio: Portfolio, result: CalcResult): string {
   rows.push([]);
   rows.push(['Current total', n(result.currentTotal)]);
   rows.push(['Cash to invest', n(result.cash)]);
-  rows.push(['Fees', n(result.feesTotal)]);
+  rows.push(['Fees charged', n(result.feesTotal)]);
+  rows.push(['Fees reserved', n(result.feesReserved)]);
   rows.push(['Investable total', n(result.investable)]);
   rows.push(['Net traded', n(result.netTradeValue)]);
   rows.push(['Cash remaining', n(result.cashRemaining)]);

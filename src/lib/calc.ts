@@ -126,10 +126,31 @@ export function calculate(portfolio: Portfolio): CalcResult {
   let feesTotal = tradableFees(null);
   let plans: TradePlan[] = [];
   let investable = 0;
+  let budgetLimited = false;
   for (let pass = 0; pass < 8; pass += 1) {
     investable = currentTotal + cash - feesTotal;
-    plans = base.map((b) =>
-      planTrade(investable * b.p.targetWeight - b.valueBase, b.priceBase, {
+    const deltas = base.map((b) => investable * b.p.targetWeight - b.valueBase);
+
+    // When selling is off, sells cannot fund the buys, so the plan has to fit
+    // inside the new cash. If the combined shortfall is larger than the budget,
+    // every buy is scaled back by the same factor — each underweight position
+    // moves the same fraction of the way to its target, and none is starved.
+    if (!settings.allowSell) {
+      const budget = Math.max(0, cash - feesTotal);
+      const wanted = sum(
+        deltas.map((d, i) => (base[i].p.locked || d <= 0 ? 0 : d)),
+      );
+      if (wanted > budget + 1e-9) {
+        budgetLimited = true;
+        const scale = wanted > 0 ? budget / wanted : 0;
+        for (let i = 0; i < deltas.length; i += 1) {
+          if (deltas[i] > 0) deltas[i] *= scale;
+        }
+      }
+    }
+
+    plans = base.map((b, i) =>
+      planTrade(deltas[i], b.priceBase, {
         rounding: settings.rounding,
         allowSell: settings.allowSell,
         allowFractionalShares: settings.allowFractionalShares,
@@ -144,6 +165,94 @@ export function calculate(portfolio: Portfolio): CalcResult {
     if (Math.abs(nextFees - feesTotal) < 1e-9) break;
     feesTotal = nextFees;
   }
+
+  // Rounding down leaves a little cash unspent against every position at once.
+  // This pass puts it to work: repeatedly buy one more whole share of whichever
+  // position is furthest below its target, as long as that share brings it
+  // closer to target (deficit above half a share) and the cash covers it.
+  let leftoverShares = 0;
+  if (settings.useLeftoverCash && !settings.allowFractionalShares) {
+    const tradedAlready = new Set(
+      base.filter((_b, i) => plans[i].tradeShares !== 0).map((b) => b.p.id),
+    );
+    let remaining =
+      cash -
+      tradableFees(new Set(base.filter((_b, i) => plans[i].tradeShares !== 0).map((b) => b.p.id))) -
+      sum(plans.map((pl) => pl.tradeValueBase));
+
+    for (let guard = 0; guard < 10_000; guard += 1) {
+      let bestIndex = -1;
+      let bestDeficit = 0;
+      for (let i = 0; i < base.length; i += 1) {
+        const b = base[i];
+        if (b.p.locked || !(b.priceBase > 0)) continue;
+        // With per-trade fees, never open a new fee-bearing trade for small change.
+        if (settings.feeMode === 'traded' && !tradedAlready.has(b.p.id)) continue;
+        if (b.priceBase > remaining + 1e-9) continue;
+        const deficit =
+          investable * b.p.targetWeight - (b.valueBase + plans[i].tradeValueBase);
+        if (deficit <= b.priceBase / 2) continue;
+        // `remaining` already caps total spend, so a budget-limited plan simply
+        // fills whatever cash the rounding left behind.
+        if (deficit > bestDeficit) {
+          bestDeficit = deficit;
+          bestIndex = i;
+        }
+      }
+      if (bestIndex === -1) break;
+
+      const price = base[bestIndex].priceBase;
+      const prev = plans[bestIndex];
+      plans[bestIndex] = {
+        ...prev,
+        tradeShares: prev.tradeShares + 1,
+        tradeValueBase: prev.tradeValueBase + price,
+        action: prev.tradeShares + 1 > 0 ? 'buy' : prev.tradeShares + 1 < 0 ? 'sell' : 'hold',
+      };
+      remaining -= price;
+      leftoverShares += 1;
+    }
+  }
+
+  // Rounding can also leave the plan *unaffordable*: sells round toward zero,
+  // so they raise less than the ideal, while the buys they were meant to fund
+  // stay put. Trim the buy that is closest to its target — the one that needs
+  // the share least — until the plan fits the cash.
+  const incurredFees = () =>
+    tradableFees(new Set(base.filter((_b, i) => plans[i].tradeShares !== 0).map((b) => b.p.id)));
+
+  {
+    const remainingNow = () =>
+      cash - incurredFees() - sum(plans.map((pl) => pl.tradeValueBase));
+    for (let guard = 0; guard < 10_000 && remainingNow() < -1e-9; guard += 1) {
+      let bestIndex = -1;
+      let smallestDeficit = Infinity;
+      for (let i = 0; i < base.length; i += 1) {
+        if (plans[i].tradeShares <= 0 || !(base[i].priceBase > 0)) continue;
+        const deficit =
+          investable * base[i].p.targetWeight - (base[i].valueBase + plans[i].tradeValueBase);
+        if (deficit < smallestDeficit) {
+          smallestDeficit = deficit;
+          bestIndex = i;
+        }
+      }
+      if (bestIndex === -1) break;
+
+      const price = base[bestIndex].priceBase;
+      const prev = plans[bestIndex];
+      const shares = prev.tradeShares - 1;
+      plans[bestIndex] = {
+        ...prev,
+        tradeShares: shares,
+        tradeValueBase: shares === 0 ? 0 : prev.tradeValueBase - price,
+        action: shares > 0 ? 'buy' : shares < 0 ? 'sell' : 'hold',
+      };
+    }
+  }
+
+  // What the chain reserved, versus what the final plan will actually be charged.
+  const feesReserved = feesTotal;
+  feesTotal = incurredFees();
 
   const results: PositionResult[] = base.map((b, i) => {
     const plan = plans[i];
@@ -194,6 +303,15 @@ export function calculate(portfolio: Portfolio): CalcResult {
         `Every target value is scaled by that sum, so results will be off until it is fixed.`,
     );
   }
+  if (budgetLimited) {
+    const needed = cashToReachTargets(base, currentTotal, feesReserved);
+    warnings.push(
+      `Reaching the target split exactly would take about ${fmtShort(needed)} ` +
+        `${settings.baseCurrency}, more than the ${fmtShort(cash)} you are investing, so every ` +
+        `purchase was scaled back proportionally. The split gets closer, but not all the way — ` +
+        `add more cash, or allow selling, to close the gap.`,
+    );
+  }
   if (cashRemaining < -1e-6) {
     warnings.push(
       `The plan needs ${fmtShort(-cashRemaining)} ${settings.baseCurrency} more than the ` +
@@ -215,13 +333,57 @@ export function calculate(portfolio: Portfolio): CalcResult {
     currentTotal,
     cash,
     feesTotal,
+    feesReserved,
     investable,
     netTradeValue,
     cashRemaining,
     newTotal,
     targetWeightSum,
+    leftoverShares,
+    budgetLimited,
+    cashForFullTarget: budgetLimited
+      ? cashToReachTargets(base, currentTotal, feesReserved)
+      : cash,
     warnings,
   };
+}
+
+
+/**
+ * How much cash a buy-only plan needs to reach every target exactly.
+ *
+ * Not simply the sum of today's shortfalls: adding cash grows the portfolio,
+ * which raises every target value, which widens the shortfalls again. Solving
+ * `Σ max(0, (total + budget) × weight − value) = budget` over the underweight
+ * set gives `budget = (total × W − V) / (1 − W)`, and since the underweight set
+ * itself depends on the budget, that is iterated to a fixed point.
+ */
+function cashToReachTargets(
+  base: { p: Position; priceBase: number; valueBase: number }[],
+  currentTotal: number,
+  feesTotal: number,
+): number {
+  let budget = 0;
+  for (let pass = 0; pass < 20; pass += 1) {
+    // A tolerance matters here: a position sitting exactly on target lands a
+    // hair above zero in floating point, which would drag it into the active
+    // set and push the weight sum to 1, short-circuiting the solve.
+    const active = base.filter(
+      (b) => !b.p.locked && (currentTotal + budget) * b.p.targetWeight - b.valueBase > 1e-6,
+    );
+    const weightSum = sum(active.map((b) => b.p.targetWeight));
+    const valueSum = sum(active.map((b) => b.valueBase));
+    // Every position underweight: the targets are met at any budget.
+    if (weightSum >= 1 - 1e-12) return feesTotal;
+    const next = (currentTotal * weightSum - valueSum) / (1 - weightSum);
+    if (!Number.isFinite(next) || next < 0) return feesTotal;
+    if (Math.abs(next - budget) < 1e-9) {
+      budget = next;
+      break;
+    }
+    budget = next;
+  }
+  return budget + feesTotal;
 }
 
 function sum(values: number[]): number {

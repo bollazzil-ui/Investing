@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Portfolio, Position, Settings } from './types';
 import { calculate } from './lib/calc';
-import { hydrate, loadPortfolio, loadTheme, savePortfolio, saveTheme, downloadFile, type Theme } from './lib/storage';
+import {
+  downloadFile,
+  hydrate,
+  loadMode,
+  loadPortfolio,
+  loadTheme,
+  saveMode,
+  savePortfolio,
+  saveTheme,
+  type Theme,
+} from './lib/storage';
 import { portfolioJson, timestampedName, tradePlanCsv } from './lib/exporters';
 import { fetchFxRates, fetchQuote } from './lib/quotes';
 import { SAMPLE_PORTFOLIO } from './lib/sample';
@@ -11,12 +21,14 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
+import { GuidedFlow } from './components/GuidedFlow';
 
 type FxStatus = 'idle' | 'loading' | { asOf: string } | { error: string };
 type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefined>;
 
 export default function App() {
   const [portfolio, setPortfolio] = useState<Portfolio>(loadPortfolio);
+  const [mode, setMode] = useState<'guided' | 'advanced'>(loadMode);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fxStatus, setFxStatus] = useState<FxStatus>('idle');
   const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>({});
@@ -31,6 +43,10 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     saveTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    saveMode(mode);
+  }, [mode]);
 
   useEffect(() => {
     if (!toast) return;
@@ -134,7 +150,7 @@ export default function App() {
 
   return (
     <div className="min-h-full">
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--page)_88%,transparent)] backdrop-blur">
+      <header className="no-print sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--page)_88%,transparent)] backdrop-blur">
         <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
@@ -171,6 +187,29 @@ export default function App() {
                 e.target.value = '';
               }}
             />
+            <div
+              role="radiogroup"
+              aria-label="View mode"
+              className="mr-1 inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5"
+            >
+              {(['guided', 'advanced'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  onClick={() => setMode(m)}
+                  className="rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors"
+                  style={{
+                    background: mode === m ? 'var(--surface-1)' : 'transparent',
+                    color: mode === m ? 'var(--ink-1)' : 'var(--ink-3)',
+                    boxShadow: mode === m ? 'var(--shadow-card)' : 'none',
+                  }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
             <button className="btn" onClick={() => fileInput.current?.click()}>
               ↑ Import
             </button>
@@ -192,7 +231,22 @@ export default function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[100rem] space-y-4 px-4 py-5 sm:px-6">
+      <main
+        className={`mx-auto space-y-4 px-4 py-5 sm:px-6 ${
+          mode === 'guided' ? 'max-w-5xl' : 'max-w-[100rem]'
+        }`}
+      >
+        {mode === 'guided' ? (
+          <GuidedFlow
+            portfolio={portfolio}
+            result={result}
+            onPositions={setPositions}
+            onSettings={setSettings}
+            onExportCsv={exportCsv}
+            onAdvanced={() => setMode('advanced')}
+          />
+        ) : (
+          <>
         <SummaryTiles result={result} currency={portfolio.settings.baseCurrency} />
 
         {result.warnings.length > 0 && (
@@ -244,6 +298,8 @@ export default function App() {
           currency={portfolio.settings.baseCurrency}
           onExportCsv={exportCsv}
         />
+          </>
+        )}
 
         <footer className="pb-6 pt-2 text-center text-xs text-[var(--ink-3)]">
           Saved in this browser only. Figures are an aid for your own decisions, not investment

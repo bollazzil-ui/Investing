@@ -46,12 +46,16 @@ export function SummaryTiles({ result, currency }: { result: CalcResult; currenc
       <Tile
         label="Fees"
         value={formatMoney(result.feesTotal, currency)}
-        hint="Deducted before targets"
+        hint={
+          Math.abs(result.feesReserved - result.feesTotal) > 1e-9
+            ? `${formatMoney(result.feesReserved, currency)} reserved`
+            : 'On the trades planned'
+        }
       />
       <Tile
         label="Investable total"
         value={formatMoney(result.investable, currency)}
-        hint="Holdings + cash − fees"
+        hint="Holdings + cash − reserved fees"
         tone="accent"
       />
       <Tile
