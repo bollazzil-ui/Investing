@@ -421,9 +421,12 @@ export function AddProductDialog({
                 value={draft.fee}
                 onChange={(v) => setDraft({ ...draft, fee: v })}
                 min={0}
-                suffix={baseCurrency}
+                suffix={draft.currency || baseCurrency}
                 ariaLabel="Trading fee"
               />
+              <p className="mt-1 text-[0.6875rem] text-[var(--ink-3)]">
+                In the product’s own currency.
+              </p>
             </div>
           </div>
 

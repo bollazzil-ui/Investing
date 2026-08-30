@@ -90,7 +90,7 @@ export function PositionsTable({
               <th className="th w-[6.5rem]">Actual</th>
               <th className="th w-[7.5rem]">Target</th>
               <th className="th w-[6.5rem]">Drift</th>
-              <th className="th w-[6.5rem]">Fee {base}</th>
+              <th className="th w-[7rem]">Fee</th>
               <th className="th w-[7rem]" />
             </tr>
           </thead>
@@ -191,6 +191,7 @@ export function PositionsTable({
                         value={p.fee}
                         onChange={(v) => update(p.id, { fee: v })}
                         min={0}
+                        suffix={p.currency}
                         ariaLabel={`Fee for ${p.ticker || `position ${i + 1}`}`}
                       />
                     </td>
@@ -333,7 +334,9 @@ export function PositionsTable({
                   {formatPercent(weightSum)}
                 </td>
                 <td className="td" />
-                <td className="td num font-semibold">{formatMoney(result.feesTotal)}</td>
+                <td className="td num font-semibold" title={`Converted into ${base}`}>
+                  {formatMoney(result.feesReserved)} {base}
+                </td>
                 <td className="td" />
               </tr>
             </tfoot>

@@ -22,7 +22,10 @@ export interface Position {
   shares: number;
   /** Desired share of the portfolio, as a fraction (0.30 = 30%). */
   targetWeight: number;
-  /** Transaction cost for trading this position, in the base currency. */
+  /**
+   * Transaction cost for trading this position, in the position's OWN
+   * currency — a USD-listed ETF is charged in USD.
+   */
   fee: number;
   /** Symbol used when refreshing the price from a quote provider. */
   quoteSymbol?: string;
@@ -33,8 +36,14 @@ export interface Position {
 export interface Settings {
   /** Currency every value is reported in, e.g. "CHF". */
   baseCurrency: string;
-  /** Fresh money added to the portfolio, in the base currency. */
-  cash: number;
+  /**
+   * Fresh money to invest, held per currency: `{ CHF: 1000, USD: 500 }`.
+   *
+   * The balances form one pooled budget — any balance can fund a purchase in
+   * any currency — but buying in a currency you do not hold enough of costs
+   * `conversionSpread` and `conversionFee`.
+   */
+  cashBalances: Record<string, number>;
   /**
    * Units of base currency per 1 unit of the quoted currency.
    * `{ USD: 0.8505 }` means 1 USD = 0.8505 CHF. The base currency is
@@ -45,6 +54,14 @@ export interface Settings {
   /** When false, negative deltas are clamped to zero (buy-only rebalancing). */
   allowSell: boolean;
   feeMode: FeeMode;
+  /**
+   * Cost of converting between currencies, as a fraction of the converted
+   * amount (0.0025 = 0.25%). Charged only on the part of a purchase that the
+   * matching cash balance cannot cover.
+   */
+  conversionSpread: number;
+  /** Flat cost per currency that has to be converted, in the base currency. */
+  conversionFee: number;
   /** Skip share rounding entirely (fractional-share brokers). */
   allowFractionalShares: boolean;
   /**
@@ -56,8 +73,13 @@ export interface Settings {
 }
 
 export interface Portfolio {
-  /** Schema version, so stored portfolios can be migrated. */
-  version: 1;
+  /**
+   * Schema version, so stored portfolios can be migrated.
+   *
+   * v2 moved fees into each position's own currency and replaced the single
+   * `cash` number with per-currency balances.
+   */
+  version: 2;
   name: string;
   settings: Settings;
   positions: Position[];
@@ -90,7 +112,10 @@ export interface PositionResult {
   tradeValueBase: number;
   /** The same amount expressed in the position's own currency. */
   tradeValueLocal: number;
+  /** The fee for this trade, in the position's own currency. */
   feeApplied: number;
+  /** The same fee converted into the base currency. */
+  feeAppliedBase: number;
   action: TradeAction;
   newShares: number;
   newValueBase: number;
@@ -105,7 +130,10 @@ export interface CalcResult {
   /** Value of all holdings before trading. */
   currentTotal: number;
   cash: number;
-  /** Fees the final plan will actually be charged: one per position traded. */
+  /**
+   * Fees the final plan will actually be charged, converted into the base
+   * currency: one per position traded.
+   */
   feesTotal: number;
   /**
    * Fees the target chain set aside before planning. With `feeMode: 'all'` this
@@ -113,8 +141,16 @@ export interface CalcResult {
    * charged — the difference is simply budgeted headroom that went unused.
    */
   feesReserved: number;
-  /** currentTotal + cash − feesReserved: the base for every target value. */
+  /** currentTotal + cash − feesReserved − conversionCost. */
   investable: number;
+  /** What each cash balance holds, in its own currency. */
+  cashBalances: Record<string, number>;
+  /** What is left of each balance after the plan, in its own currency. */
+  cashRemainingByCurrency: Record<string, number>;
+  /** Cost of converting between currencies to fund the plan, in the base currency. */
+  conversionCost: number;
+  /** Currencies the plan had to convert into, and how much (in that currency). */
+  converted: { currency: string; amount: number }[];
   /** Net money spent on trades (buys minus sells). */
   netTradeValue: number;
   /** cash − netTradeValue − feesTotal: what is left over uninvested. */

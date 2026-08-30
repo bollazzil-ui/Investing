@@ -1,6 +1,7 @@
 import type { CalcResult, Settings } from '../../types';
 import { formatMoney } from '../../lib/format';
-import { NumberField } from '../primitives';
+import { cashTotalBase } from '../../lib/calc';
+import { CashBalances } from '../CashBalances';
 import { StepNav } from './Stepper';
 
 const PRESETS = [500, 1000, 2500, 5000, 10000];
@@ -16,7 +17,8 @@ export function StepMoney({
   onChange: (next: Settings) => void;
   onNext: () => void;
 }) {
-  const base = settings.baseCurrency;
+  const base = settings.baseCurrency.toUpperCase();
+  const total = cashTotalBase(settings);
 
   return (
     <div className="card">
@@ -28,31 +30,21 @@ export function StepMoney({
           The new money you want to put in right now. Everything after this is worked out from it.
         </p>
 
-        <div className="mt-6 max-w-md">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-semibold text-[var(--ink-3)]">{base}</span>
-            <NumberField
-              value={settings.cash}
-              onChange={(cash) => onChange({ ...settings, cash })}
-              min={0}
-              align="left"
-              ariaLabel="Amount to invest"
-              className="!py-3 !text-3xl !font-semibold"
-            />
-          </div>
+        <div className="mt-6 max-w-lg">
+          <CashBalances settings={settings} onChange={onChange} />
           <div className="mt-3 flex flex-wrap gap-2">
             {PRESETS.map((v) => (
               <button
                 key={v}
                 className="btn"
-                onClick={() => onChange({ ...settings, cash: v })}
+                onClick={() => onChange({ ...settings, cashBalances: { ...settings.cashBalances, [base]: v } })}
                 style={
-                  settings.cash === v
+                  settings.cashBalances[base] === v
                     ? { borderColor: 'var(--accent)', color: 'var(--accent)' }
                     : undefined
                 }
               >
-                {formatMoney(v, undefined, 0)}
+                {formatMoney(v, undefined, 0)} {base}
               </button>
             ))}
           </div>
@@ -126,7 +118,7 @@ export function StepMoney({
             across {result.positions.length} position
             {result.positions.length === 1 ? '' : 's'}, so the plan will work with{' '}
             <strong className="num font-semibold text-[var(--ink-1)]">
-              {formatMoney(result.currentTotal + settings.cash, base)}
+              {formatMoney(result.currentTotal + total, base)}
             </strong>{' '}
             in total.
           </p>

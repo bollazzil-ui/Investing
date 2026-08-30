@@ -5,13 +5,15 @@ import type { FxResult, QuoteResult } from './quotes';
 
 const settings: Settings = {
   baseCurrency: 'CHF',
-  cash: 1000,
+  cashBalances: { CHF: 1000 },
   fxRates: { USD: 0.85, EUR: 0.93 },
   rounding: 'truncate',
   allowSell: false,
   feeMode: 'all',
   allowFractionalShares: false,
   useLeftoverCash: true,
+  conversionSpread: 0,
+  conversionFee: 0,
 };
 
 const pos = (over: Partial<Position> = {}): Position => ({
@@ -28,7 +30,7 @@ const pos = (over: Partial<Position> = {}): Position => ({
 });
 
 const make = (positions: Position[], over: Partial<Settings> = {}): Portfolio => ({
-  version: 1,
+  version: 2,
   name: 't',
   settings: { ...settings, ...over },
   positions,

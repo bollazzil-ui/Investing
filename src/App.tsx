@@ -17,7 +17,7 @@ import { fetchFxRates, fetchQuote } from './lib/quotes';
 import { SAMPLE_PORTFOLIO } from './lib/sample';
 import { SummaryTiles } from './components/SummaryTiles';
 import { PositionsTable } from './components/PositionsTable';
-import { SettingsPanel } from './components/SettingsPanel';
+import { SettingsDialog } from './components/SettingsDialog';
 import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
@@ -38,6 +38,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshReport, setRefreshReport] = useState<RefreshReport | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -234,6 +235,9 @@ export default function App() {
                 e.target.value = '';
               }}
             />
+            <button className="btn" onClick={() => setSettingsOpen(true)}>
+              <span aria-hidden>⚙</span> Settings
+            </button>
             <button
               className="btn"
               onClick={() => void refreshPrices()}
@@ -334,32 +338,18 @@ export default function App() {
           </div>
         )}
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="min-w-0 space-y-4">
-            <PositionsTable
-              portfolio={portfolio}
-              result={result}
-              onChange={setPositions}
-              onRefreshQuote={refreshQuote}
-              quoteStatus={quoteStatus}
-            />
-            <AllocationChart
-              result={result}
-              currency={portfolio.settings.baseCurrency}
-              showAfter={showAfter}
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="xl:sticky xl:top-[4.5rem]">
-              <SettingsPanel
-                portfolio={portfolio}
-                onChange={setSettings}
-                onRefreshFx={refreshFx}
-                fxStatus={fxStatus}
-              />
-            </div>
-          </div>
-        </div>
+        <PositionsTable
+          portfolio={portfolio}
+          result={result}
+          onChange={setPositions}
+          onRefreshQuote={refreshQuote}
+          quoteStatus={quoteStatus}
+        />
+        <AllocationChart
+          result={result}
+          currency={portfolio.settings.baseCurrency}
+          showAfter={showAfter}
+        />
 
         <TradePlan
           result={result}
@@ -369,6 +359,15 @@ export default function App() {
         />
           </>
         )}
+
+        <SettingsDialog
+          open={settingsOpen}
+          portfolio={portfolio}
+          onChange={setSettings}
+          onClose={() => setSettingsOpen(false)}
+          onRefreshFx={refreshFx}
+          fxStatus={fxStatus}
+        />
 
         <RefreshDialog
           report={refreshReport}

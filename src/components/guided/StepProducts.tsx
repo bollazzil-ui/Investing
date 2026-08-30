@@ -142,7 +142,7 @@ export function StepProducts({
                         value={p.fee}
                         onChange={(v) => update(p.id, { fee: v })}
                         min={0}
-                        suffix={base}
+                        suffix={p.currency}
                         ariaLabel={`Trading fee for ${p.ticker || `product ${i + 1}`}`}
                         className="!py-0.5 !text-xs"
                       />

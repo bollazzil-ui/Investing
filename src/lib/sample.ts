@@ -10,17 +10,19 @@ import type { Portfolio } from '../types';
  * Here they are plain editable numbers.
  */
 export const SAMPLE_PORTFOLIO: Portfolio = {
-  version: 1,
+  version: 2,
   name: 'Aufteilungsrechner',
   settings: {
     baseCurrency: 'CHF',
-    cash: 290.4,
+    cashBalances: { CHF: 290.4 },
     fxRates: { USD: 0.8505, EUR: 0.9315 },
     rounding: 'truncate',
     allowSell: true,
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: true,
+    conversionSpread: 0.0025,
+    conversionFee: 0,
   },
   positions: [
     {
@@ -32,7 +34,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
       unitPrice: 31.25,
       shares: 516,
       targetWeight: 0.3,
-      fee: 20,
+      fee: 20, // USD, the currency EIMI trades in
       quoteSymbol: 'eimi.uk',
     },
     {

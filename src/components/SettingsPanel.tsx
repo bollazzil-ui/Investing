@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Portfolio, Settings } from '../types';
-import { NumberField, SegmentedControl, Section, TextField, Toggle } from './primitives';
+import { NumberField, SegmentedControl, TextField, Toggle } from './primitives';
+import { CashBalances } from './CashBalances';
 
 export function SettingsPanel({
   portfolio,
@@ -25,133 +26,158 @@ export function SettingsPanel({
   const set = (patch: Partial<Settings>) => onChange({ ...settings, ...patch });
 
   return (
-    <Section
-      title="Calculation settings"
-      description="These drive the whole plan. Everything is reported in the base currency."
-    >
-      <div className="space-y-5 px-4 py-4 sm:px-5">
+    <div className="space-y-5">
+      <div>
+        <label className="label">Base currency</label>
+        <div className="w-32">
+          <TextField
+            value={settings.baseCurrency}
+            onChange={(v) => set({ baseCurrency: v.toUpperCase().slice(0, 5) })}
+            ariaLabel="Base currency"
+            className="uppercase"
+          />
+        </div>
+        <p className="mt-1 text-[0.6875rem] text-[var(--ink-3)]">
+          Everything is reported in this currency.
+        </p>
+      </div>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <span className="label">Cash to invest</span>
+        <CashBalances settings={settings} onChange={onChange} compact />
+      </div>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="label !mb-0">Exchange rates</span>
+          <button
+            className="btn !px-2 !py-0.5 text-xs"
+            onClick={onRefreshFx}
+            disabled={fxStatus === 'loading' || currencies.length === 0}
+          >
+            {fxStatus === 'loading' ? 'Fetching…' : 'Fetch live'}
+          </button>
+        </div>
+        {currencies.length === 0 ? (
+          <p className="text-xs text-[var(--ink-3)]">
+            Every position is already in {base}; no rates needed.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {currencies.map((code) => (
+              <div key={code} className="flex items-center gap-2">
+                <span className="num w-24 shrink-0 text-xs text-[var(--ink-2)]">1 {code} =</span>
+                <NumberField
+                  value={settings.fxRates[code] ?? 1}
+                  onChange={(v) => set({ fxRates: { ...settings.fxRates, [code]: v } })}
+                  suffix={base}
+                  min={0}
+                  ariaLabel={`Exchange rate ${code} to ${base}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {typeof fxStatus === 'object' && 'asOf' in fxStatus && (
+          <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--good)' }}>
+            ✓ ECB reference rates from {fxStatus.asOf}
+          </p>
+        )}
+        {typeof fxStatus === 'object' && 'error' in fxStatus && (
+          <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--critical)' }}>
+            ✕ {fxStatus.error}
+          </p>
+        )}
+      </div>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <label className="label">Currency conversion</label>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Base currency</label>
-            <TextField
-              value={settings.baseCurrency}
-              onChange={(v) => set({ baseCurrency: v.toUpperCase().slice(0, 5) })}
-              ariaLabel="Base currency"
-              className="uppercase"
+            <NumberField
+              value={settings.conversionSpread * 100}
+              onChange={(v) => set({ conversionSpread: v / 100 })}
+              suffix="%"
+              min={0}
+              max={100}
+              ariaLabel="Conversion spread percent"
             />
+            <p className="mt-1 text-[0.6875rem] text-[var(--ink-3)]">Spread on the amount</p>
           </div>
           <div>
-            <label className="label">Cash to invest</label>
             <NumberField
-              value={settings.cash}
-              onChange={(v) => set({ cash: v })}
+              value={settings.conversionFee}
+              onChange={(v) => set({ conversionFee: v })}
               suffix={base}
-              ariaLabel="Cash to invest"
+              min={0}
+              ariaLabel="Flat conversion fee"
             />
+            <p className="mt-1 text-[0.6875rem] text-[var(--ink-3)]">Flat, per currency</p>
           </div>
         </div>
-
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="label !mb-0">Exchange rates</span>
-            <button
-              className="btn !px-2 !py-0.5 text-xs"
-              onClick={onRefreshFx}
-              disabled={fxStatus === 'loading' || currencies.length === 0}
-            >
-              {fxStatus === 'loading' ? 'Fetching…' : 'Fetch live'}
-            </button>
-          </div>
-          {currencies.length === 0 ? (
-            <p className="text-xs text-[var(--ink-3)]">
-              Every position is already in {base}; no rates needed.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {currencies.map((code) => (
-                <div key={code} className="flex items-center gap-2">
-                  <span className="num w-24 shrink-0 text-xs text-[var(--ink-2)]">1 {code} =</span>
-                  <NumberField
-                    value={settings.fxRates[code] ?? 1}
-                    onChange={(v) =>
-                      set({ fxRates: { ...settings.fxRates, [code]: v } })
-                    }
-                    suffix={base}
-                    min={0}
-                    ariaLabel={`Exchange rate ${code} to ${base}`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-          {typeof fxStatus === 'object' && 'asOf' in fxStatus && (
-            <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--good)' }}>
-              ✓ ECB reference rates from {fxStatus.asOf}
-            </p>
-          )}
-          {typeof fxStatus === 'object' && 'error' in fxStatus && (
-            <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--critical)' }}>
-              ✕ {fxStatus.error}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="label">Share rounding</label>
-          <SegmentedControl
-            ariaLabel="Share rounding"
-            value={settings.rounding}
-            onChange={(v) => set({ rounding: v })}
-            options={[
-              { value: 'truncate', label: 'Toward zero', hint: 'Excel ROUNDDOWN — never overshoots, never sells on a tiny drift' },
-              { value: 'floor', label: 'Down', hint: 'Always rounds down, so small overweights do get sold' },
-              { value: 'nearest', label: 'Nearest', hint: 'Closest whole share, may overshoot the cash available' },
-            ]}
-          />
-          <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
-            {settings.rounding === 'truncate' &&
-              'Matches the original spreadsheet: fractions are dropped in the direction of zero, so a −0.8 share gap is left alone.'}
-            {settings.rounding === 'floor' &&
-              'Always rounds down, so a −0.8 share gap becomes a 1-share sell.'}
-            {settings.rounding === 'nearest' &&
-              'Rounds to the closest whole share, which can spend slightly more than the available cash.'}
-          </p>
-        </div>
-
-        <div>
-          <label className="label">Fees</label>
-          <SegmentedControl
-            ariaLabel="Fee handling"
-            value={settings.feeMode}
-            onChange={(v) => set({ feeMode: v })}
-            options={[
-              { value: 'all', label: 'Charge all', hint: 'Every position’s fee is reserved up front' },
-              { value: 'traded', label: 'Only if traded', hint: 'Reserve a fee only where a trade is actually planned' },
-            ]}
-          />
-        </div>
-
-        <div className="space-y-3 border-t border-[var(--border)] pt-4">
-          <Toggle
-            checked={settings.allowSell}
-            onChange={(v) => set({ allowSell: v })}
-            label="Allow selling"
-            hint="Off means overweight positions are simply left alone and only buys are planned."
-          />
-          <Toggle
-            checked={settings.useLeftoverCash}
-            onChange={(v) => set({ useLeftoverCash: v })}
-            label="Use up the leftover cash"
-            hint="After the main plan, buy extra whole shares of whatever is still furthest below target."
-          />
-          <Toggle
-            checked={settings.allowFractionalShares}
-            onChange={(v) => set({ allowFractionalShares: v })}
-            label="Fractional shares"
-            hint="Skip whole-share rounding, for brokers that support fractions."
-          />
-        </div>
+        <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
+          Charged only on the part of a purchase your matching cash balance cannot cover.
+        </p>
       </div>
-    </Section>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <label className="label">Share rounding</label>
+        <SegmentedControl
+          ariaLabel="Share rounding"
+          value={settings.rounding}
+          onChange={(v) => set({ rounding: v })}
+          options={[
+            { value: 'truncate', label: 'Toward zero', hint: 'Excel ROUNDDOWN — never overshoots, never sells on a tiny drift' },
+            { value: 'floor', label: 'Down', hint: 'Always rounds down, so small overweights do get sold' },
+            { value: 'nearest', label: 'Nearest', hint: 'Closest whole share, may overshoot the cash available' },
+          ]}
+        />
+        <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
+          {settings.rounding === 'truncate' &&
+            'Matches the original spreadsheet: fractions are dropped in the direction of zero, so a −0.8 share gap is left alone.'}
+          {settings.rounding === 'floor' &&
+            'Always rounds down, so a −0.8 share gap becomes a 1-share sell.'}
+          {settings.rounding === 'nearest' &&
+            'Rounds to the closest whole share, which can spend slightly more than the available cash.'}
+        </p>
+      </div>
+
+      <div>
+        <label className="label">Fees</label>
+        <SegmentedControl
+          ariaLabel="Fee handling"
+          value={settings.feeMode}
+          onChange={(v) => set({ feeMode: v })}
+          options={[
+            { value: 'all', label: 'Charge all', hint: 'Every position’s fee is reserved up front' },
+            { value: 'traded', label: 'Only if traded', hint: 'Reserve a fee only where a trade is actually planned' },
+          ]}
+        />
+        <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
+          Each position’s fee is entered in that position’s own currency.
+        </p>
+      </div>
+
+      <div className="space-y-3 border-t border-[var(--border)] pt-4">
+        <Toggle
+          checked={settings.allowSell}
+          onChange={(v) => set({ allowSell: v })}
+          label="Allow selling"
+          hint="Off means overweight positions are simply left alone and only buys are planned."
+        />
+        <Toggle
+          checked={settings.useLeftoverCash}
+          onChange={(v) => set({ useLeftoverCash: v })}
+          label="Use up the leftover cash"
+          hint="After the main plan, buy extra whole shares of whatever is still furthest below target."
+        />
+        <Toggle
+          checked={settings.allowFractionalShares}
+          onChange={(v) => set({ allowFractionalShares: v })}
+          label="Fractional shares"
+          hint="Skip whole-share rounding, for brokers that support fractions."
+        />
+      </div>
+    </div>
   );
 }

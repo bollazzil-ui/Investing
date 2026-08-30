@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { CalcResult, Portfolio } from '../types';
-import { applyPurchase, planPurchase } from '../lib/calc';
+import { applyPurchase, cashTotalBase, planPurchase } from '../lib/calc';
 import { formatMoney, formatPercent, formatShares } from '../lib/format';
 import { seriesColor } from '../lib/colors';
 import { NumberField } from './primitives';
@@ -39,12 +39,14 @@ export function BuyDialog({
   useEffect(() => {
     if (!open) return;
     restoreFocusTo.current = document.activeElement as HTMLElement | null;
-    setAmount(portfolio.settings.cash > 0 ? portfolio.settings.cash : 0);
+    const pooled = cashTotalBase(portfolio.settings);
+    setAmount(pooled > 0 ? Math.round(pooled * 100) / 100 : 0);
     setComputedFor(null);
     setPlan(null);
     const t = setTimeout(() => amountRef.current?.focus(), 30);
     return () => clearTimeout(t);
-  }, [open, portfolio.settings.cash]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (open) return;

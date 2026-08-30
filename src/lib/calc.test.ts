@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyPurchase,
   calculate,
+  settleBalances,
   normalizeWeights,
   planPurchase,
   planTrade,
@@ -25,13 +26,15 @@ const EUR = 0.9315;
 
 const sheetSettings: Settings = {
   baseCurrency: 'CHF',
-  cash: 290.4, // D11 "Liquider Teil"
+  cashBalances: { CHF: 290.4 }, // D11 "Liquider Teil"
   fxRates: { USD, EUR },
   rounding: 'truncate',
   allowSell: true,
   feeMode: 'all',
   allowFractionalShares: false,
   useLeftoverCash: false,
+  conversionSpread: 0,
+  conversionFee: 0,
 };
 
 /** A position whose shares × price equals `value` exactly. */
@@ -54,7 +57,7 @@ describe('allocation chain vs. spreadsheet', () => {
   const SWDA_TARGET = 0.7 - IUSN_TARGET; // 0.60298
 
   const portfolio: Portfolio = {
-    version: 1,
+    version: 2,
     name: 'sheet',
     settings: sheetSettings,
     positions: [
@@ -179,9 +182,9 @@ describe('constraints', () => {
 
   it('never trades a locked position but still counts its value', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...sheetSettings, cash: 0, fxRates: {} },
+      settings: { ...sheetSettings, cashBalances: { CHF: 0 }, fxRates: {} },
       positions: [p({ id: 'a', locked: true, fee: 25 }), p({ id: 'b', ticker: 'B', shares: 30 })],
     });
     expect(r.currentTotal).toBe(4000);
@@ -192,9 +195,9 @@ describe('constraints', () => {
 
   it('charges a fee only for positions actually traded in "traded" mode', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...sheetSettings, cash: 0, fxRates: {}, feeMode: 'traded' },
+      settings: { ...sheetSettings, cashBalances: { CHF: 0 }, fxRates: {}, feeMode: 'traded' },
       // b is already exactly on target, so it should not be charged.
       positions: [
         p({ id: 'a', shares: 5, targetWeight: 0.5, fee: 10 }),
@@ -209,9 +212,9 @@ describe('constraints', () => {
 
   it('warns when target weights do not add up to 100%', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...sheetSettings, cash: 0, fxRates: {} },
+      settings: { ...sheetSettings, cashBalances: { CHF: 0 }, fxRates: {} },
       positions: [p({ targetWeight: 0.4 }), p({ id: 'b', ticker: 'B', targetWeight: 0.4 })],
     });
     expect(r.warnings.join(' ')).toContain('80.00%');
@@ -219,9 +222,9 @@ describe('constraints', () => {
 
   it('converts a foreign-currency trade back into its own currency', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...sheetSettings, cash: 1000, fxRates: { USD } },
+      settings: { ...sheetSettings, cashBalances: { CHF: 1000 }, fxRates: { USD } },
       positions: [p({ currency: 'USD', unitPrice: 100, shares: 10, targetWeight: 1, fee: 0 })],
     });
     const only = r.positions[0];
@@ -252,13 +255,15 @@ describe('normalizeWeights', () => {
 describe('investing new money (buy-only)', () => {
   const settings: Settings = {
     baseCurrency: 'CHF',
-    cash: 10_000,
+    cashBalances: { CHF: 10_000 },
     fxRates: {},
     rounding: 'truncate',
     allowSell: false,
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: false,
+  conversionSpread: 0,
+  conversionFee: 0,
   };
 
   // 60/40 target, currently 50/50 by value. New money must correct the split.
@@ -268,12 +273,12 @@ describe('investing new money (buy-only)', () => {
   ];
 
   it('only buys, never sells', () => {
-    const r = calculate({ version: 1, name: 't', settings, positions });
+    const r = calculate({ version: 2, name: 't', settings, positions });
     expect(r.positions.every((p) => p.tradeShares >= 0)).toBe(true);
   });
 
   it('directs new money at the underweight position', () => {
-    const r = calculate({ version: 1, name: 't', settings, positions });
+    const r = calculate({ version: 2, name: 't', settings, positions });
     // investable 30k → A wants 18k (has 10k), B wants 12k (has 10k).
     expect(r.positions[0].tradeShares).toBe(80);
     expect(r.positions[1].tradeShares).toBe(20);
@@ -286,7 +291,7 @@ describe('investing new money (buy-only)', () => {
       { ...positions[0], shares: 190 },
       { ...positions[1], shares: 10 },
     ];
-    const r = calculate({ version: 1, name: 't', settings, positions: skewed });
+    const r = calculate({ version: 2, name: 't', settings, positions: skewed });
     expect(r.positions[0].action).toBe('hold');
     expect(r.positions[1].action).toBe('buy');
   });
@@ -295,13 +300,15 @@ describe('investing new money (buy-only)', () => {
 describe('leftover cash', () => {
   const base: Settings = {
     baseCurrency: 'CHF',
-    cash: 1000,
+    cashBalances: { CHF: 1000 },
     fxRates: {},
     rounding: 'truncate',
     allowSell: false,
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: false,
+  conversionSpread: 0,
+  conversionFee: 0,
   };
 
   // Prices that do not divide the cash evenly, so rounding down strands money.
@@ -311,7 +318,7 @@ describe('leftover cash', () => {
   ];
 
   it('strands cash when the pass is off', () => {
-    const r = calculate({ version: 1, name: 't', settings: base, positions });
+    const r = calculate({ version: 2, name: 't', settings: base, positions });
     expect(r.positions[0].tradeShares).toBe(7); // 500/70 = 7.14
     expect(r.positions[1].tradeShares).toBe(16); // 500/30 = 16.67
     expect(r.cashRemaining).toBeCloseTo(30, 8);
@@ -319,7 +326,7 @@ describe('leftover cash', () => {
 
   it('spends the leftover on the position furthest below target', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: { ...base, useLeftoverCash: true },
       positions,
@@ -331,7 +338,7 @@ describe('leftover cash', () => {
 
   it('never spends more cash than is available', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: { ...base, useLeftoverCash: true },
       positions,
@@ -342,9 +349,9 @@ describe('leftover cash', () => {
   it('does not buy a share that would overshoot the target', () => {
     // Cash left over (40) exceeds A's price, but A is only 5 short of target.
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...base, cash: 240, useLeftoverCash: true },
+      settings: { ...base, cashBalances: { CHF: 240 }, useLeftoverCash: true },
       positions: [
         { ...positions[0], unitPrice: 40, shares: 0, targetWeight: 0.5 },
         { ...positions[1], unitPrice: 100, shares: 0, targetWeight: 0.5 },
@@ -358,7 +365,7 @@ describe('leftover cash', () => {
 
   it('is skipped for fractional shares, which strand nothing anyway', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: { ...base, useLeftoverCash: true, allowFractionalShares: true },
       positions,
@@ -371,13 +378,15 @@ describe('leftover cash', () => {
 describe('buy-only never overspends the cash', () => {
   const settings: Settings = {
     baseCurrency: 'CHF',
-    cash: 10_000,
+    cashBalances: { CHF: 10_000 },
     fxRates: {},
     rounding: 'truncate',
     allowSell: false,
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: true,
+  conversionSpread: 0,
+  conversionFee: 0,
   };
 
   // A large existing portfolio plus a brand-new position with a 20% target:
@@ -388,11 +397,11 @@ describe('buy-only never overspends the cash', () => {
     { id: 'new', ticker: 'NEW', name: 'New', currency: 'CHF', unitPrice: 10, shares: 0, targetWeight: 0.2, fee: 0 },
   ];
 
-  const r = calculate({ version: 1, name: 't', settings, positions });
+  const r = calculate({ version: 2, name: 't', settings, positions });
   const spent = r.positions.reduce((a, p) => a + p.tradeValueBase, 0);
 
   it('spends no more than the cash available', () => {
-    expect(spent).toBeLessThanOrEqual(settings.cash + 1e-9);
+    expect(spent).toBeLessThanOrEqual(settings.cashBalances.CHF + 1e-9);
     expect(r.cashRemaining).toBeGreaterThanOrEqual(-1e-9);
   });
 
@@ -403,11 +412,11 @@ describe('buy-only never overspends the cash', () => {
 
   it('reports the cash that would reach the targets exactly, fees included', () => {
     // B is 15k short and NEW is 10k short of a 50k portfolio; fees are zero.
-    expect(r.cashForFullTarget).toBeGreaterThan(settings.cash);
+    expect(r.cashForFullTarget).toBeGreaterThan(settings.cashBalances.CHF);
     const generous = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...settings, cash: r.cashForFullTarget },
+      settings: { ...settings, cashBalances: { CHF: r.cashForFullTarget } },
       positions,
     });
     expect(generous.budgetLimited).toBe(false);
@@ -415,12 +424,12 @@ describe('buy-only never overspends the cash', () => {
 
   it('clears the shortfall even when fees are charged', () => {
     const withFees: Position[] = positions.map((p) => ({ ...p, fee: 25 }));
-    const limited = calculate({ version: 1, name: 't', settings, positions: withFees });
+    const limited = calculate({ version: 2, name: 't', settings, positions: withFees });
     expect(limited.budgetLimited).toBe(true);
     const topped = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...settings, cash: Math.ceil(limited.cashForFullTarget) },
+      settings: { ...settings, cashBalances: { CHF: Math.ceil(limited.cashForFullTarget) } },
       positions: withFees,
     });
     expect(topped.budgetLimited).toBe(false);
@@ -443,9 +452,9 @@ describe('buy-only never overspends the cash', () => {
 
   it('does not scale back when the cash is sufficient', () => {
     const roomy = calculate({
-      version: 1,
+      version: 2,
       name: 't',
-      settings: { ...settings, cash: 100_000 },
+      settings: { ...settings, cashBalances: { CHF: 100_000 } },
       positions,
     });
     expect(roomy.budgetLimited).toBe(false);
@@ -453,7 +462,7 @@ describe('buy-only never overspends the cash', () => {
 
   it('leaves full rebalancing free to fund buys from sells', () => {
     const rebal = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: { ...settings, allowSell: true },
       positions,
@@ -466,17 +475,19 @@ describe('buy-only never overspends the cash', () => {
 describe('fees', () => {
   it('charges nothing when the plan trades nothing', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: {
         baseCurrency: 'CHF',
-        cash: 0,
+        cashBalances: { CHF: 0 },
         fxRates: {},
         rounding: 'truncate',
         allowSell: false,
         feeMode: 'all',
         allowFractionalShares: false,
         useLeftoverCash: true,
+        conversionSpread: 0,
+        conversionFee: 0,
       },
       positions: [
         { id: 'a', ticker: 'A', name: 'A', currency: 'CHF', unitPrice: 10, shares: 60, targetWeight: 0.5, fee: 12 },
@@ -493,19 +504,21 @@ describe('fees', () => {
 describe('the plan is always affordable', () => {
   const settings: Settings = {
     baseCurrency: 'CHF',
-    cash: 10_000,
+    cashBalances: { CHF: 10_000 },
     fxRates: {},
     rounding: 'truncate',
     allowSell: true,
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: true,
+  conversionSpread: 0,
+  conversionFee: 0,
   };
 
   it('trims buys when rounded sells raise less than the ideal', () => {
     // Chunky, awkward prices so truncation bites on both sides.
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings,
       positions: [
@@ -524,9 +537,9 @@ describe('the plan is always affordable', () => {
         for (const cash of [0, 137, 1000, 9999.99, 50_000]) {
           for (const price of [3.3, 41.7, 260.5]) {
             const r = calculate({
-              version: 1,
+              version: 2,
               name: 't',
-              settings: { ...settings, rounding, allowSell, cash },
+              settings: { ...settings, rounding, allowSell, cashBalances: { CHF: cash } },
               positions: [
                 { id: 'a', ticker: 'A', name: 'A', currency: 'CHF', unitPrice: price, shares: 120, targetWeight: 0.5, fee: 12 },
                 { id: 'b', ticker: 'B', name: 'B', currency: 'CHF', unitPrice: price * 1.7, shares: 40, targetWeight: 0.3, fee: 12 },
@@ -545,7 +558,7 @@ describe('the plan is always affordable', () => {
 
   it('leaves an affordable plan untouched', () => {
     const r = calculate({
-      version: 1,
+      version: 2,
       name: 't',
       settings: { ...settings, allowSell: false, useLeftoverCash: false },
       positions: [
@@ -561,20 +574,22 @@ describe('the plan is always affordable', () => {
 describe('planPurchase / applyPurchase', () => {
   const settings: Settings = {
     baseCurrency: 'CHF',
-    cash: 0,
+    cashBalances: { CHF: 0 },
     fxRates: { USD: 0.8505 },
     rounding: 'truncate',
     allowSell: true, // deliberately on, to prove the purchase plan overrides it
     feeMode: 'all',
     allowFractionalShares: false,
     useLeftoverCash: true,
+  conversionSpread: 0,
+  conversionFee: 0,
   };
 
   const positions: Position[] = [
     { id: 'a', ticker: 'A', name: 'A', currency: 'CHF', unitPrice: 100, shares: 90, targetWeight: 0.5, fee: 0 },
     { id: 'b', ticker: 'B', name: 'B', currency: 'USD', unitPrice: 50, shares: 100, targetWeight: 0.5, fee: 0 },
   ];
-  const portfolio: Portfolio = { version: 1, name: 't', settings, positions };
+  const portfolio: Portfolio = { version: 2, name: 't', settings, positions };
 
   it('never sells, whatever the portfolio setting says', () => {
     const { result } = planPurchase(portfolio, 5000);
@@ -609,10 +624,10 @@ describe('planPurchase / applyPurchase', () => {
   it('keeps what could not be spent as cash to invest, rounded to money', () => {
     const { result } = planPurchase(portfolio, 5000);
     const after = applyPurchase(portfolio, result);
-    expect(after.settings.cash).toBeCloseTo(result.cashRemaining, 2);
-    expect(after.settings.cash).toBeGreaterThanOrEqual(0);
+    expect(after.settings.cashBalances.CHF).toBeCloseTo(result.cashRemaining, 2);
+    expect(after.settings.cashBalances.CHF).toBeGreaterThanOrEqual(0);
     // No float tail: this value goes straight into a visible cash field.
-    expect(after.settings.cash * 100).toBeCloseTo(Math.round(after.settings.cash * 100), 9);
+    expect(after.settings.cashBalances.CHF * 100).toBeCloseTo(Math.round(after.settings.cashBalances.CHF * 100), 9);
   });
 
   it('grows the portfolio by exactly what was spent', () => {
@@ -639,7 +654,7 @@ describe('planPurchase / applyPurchase', () => {
   it('has nothing left to buy when the leftover cannot cover a share', () => {
     const { result } = planPurchase(portfolio, 5000);
     const after = applyPurchase(portfolio, result);
-    const second = planPurchase(after, after.settings.cash);
+    const second = planPurchase(after, after.settings.cashBalances.CHF);
     expect(second.result.positions.every((p) => p.tradeShares === 0)).toBe(true);
   });
 
@@ -651,5 +666,203 @@ describe('planPurchase / applyPurchase', () => {
       const was = result.positions.find((x) => x.id === p.id)!;
       expect(Math.abs(p.driftWeight)).toBeLessThanOrEqual(Math.abs(was.driftWeight) + 1e-9);
     }
+  });
+});
+
+describe('multi-currency cash', () => {
+  const USD = 0.85;
+  const EUR = 0.95;
+
+  const settings: Settings = {
+    baseCurrency: 'CHF',
+    cashBalances: { CHF: 1000, USD: 500 },
+    fxRates: { USD, EUR },
+    rounding: 'truncate',
+    allowSell: false,
+    feeMode: 'all',
+    allowFractionalShares: false,
+    useLeftoverCash: false,
+    conversionSpread: 0,
+    conversionFee: 0,
+  };
+
+  const usdPos: Position = { id: 'u', ticker: 'U', name: 'U', currency: 'USD', unitPrice: 100, shares: 0, targetWeight: 0.5, fee: 0 };
+  const eurPos: Position = { id: 'e', ticker: 'E', name: 'E', currency: 'EUR', unitPrice: 100, shares: 0, targetWeight: 0.5, fee: 0 };
+  const make = (over: Partial<Settings> = {}, positions = [usdPos, eurPos]): Portfolio => ({
+    version: 2,
+    name: 't',
+    settings: { ...settings, ...over },
+    positions,
+  });
+
+  it('pools every balance into one budget, in the base currency', () => {
+    // 1000 CHF + 500 USD × 0.85 = 1425 CHF
+    expect(calculate(make()).cash).toBeCloseTo(1425, 8);
+  });
+
+  it('lets one currency fund a purchase in another', () => {
+    const r = calculate(make({ cashBalances: { CHF: 1425 } }));
+    // Nothing is held in USD or EUR, yet both can still be bought.
+    expect(r.positions[0].tradeShares).toBeGreaterThan(0);
+    expect(r.positions[1].tradeShares).toBeGreaterThan(0);
+  });
+
+  it('ignores a currency it holds enough of when charging conversion', () => {
+    // Only the USD product is bought, and the USD balance covers it.
+    const r = calculate(
+      make({ conversionSpread: 0.01, cashBalances: { USD: 500 } }, [
+        { ...usdPos, targetWeight: 1 },
+      ]),
+    );
+    expect(r.converted).toEqual([]);
+    expect(r.conversionCost).toBe(0);
+  });
+
+  it('charges the spread only on the part a balance cannot cover', () => {
+    // Buying 500 USD of U with 300 USD held: 200 USD must be converted.
+    const r = calculate(
+      make({ conversionSpread: 0.01, cashBalances: { USD: 300, CHF: 1000 } }, [
+        { ...usdPos, targetWeight: 1 },
+      ]),
+    );
+    const converted = r.converted.find((c) => c.currency === 'USD');
+    expect(converted).toBeDefined();
+    expect(r.conversionCost).toBeCloseTo(converted!.amount * USD * 0.01, 6);
+    expect(r.warnings.join(' ')).toMatch(/currency conversion is included/);
+  });
+
+  it('adds a flat fee per currency converted', () => {
+    const r = calculate(make({ conversionFee: 5, cashBalances: { CHF: 1425 } }));
+    expect(r.converted.map((c) => c.currency).sort()).toEqual(['EUR', 'USD']);
+    expect(r.conversionCost).toBeCloseTo(10, 6); // two currencies × 5
+  });
+
+  it('never lets conversion cost push the plan over budget', () => {
+    for (const spread of [0, 0.005, 0.05, 0.2]) {
+      for (const flat of [0, 5, 50]) {
+        const r = calculate(make({ conversionSpread: spread, conversionFee: flat }));
+        expect(r.cashRemaining, `spread=${spread} flat=${flat}`).toBeGreaterThanOrEqual(-1e-6);
+      }
+    }
+  });
+
+  it('never leaves a balance negative, however the plan falls', () => {
+    const cases: Record<string, number>[] = [{ CHF: 1000, USD: 500 }, { USD: 900 }, { CHF: 250, EUR: 400 }];
+    for (const balances of cases) {
+      const r = calculate(make({ cashBalances: balances }));
+      for (const [code, amount] of Object.entries(r.cashRemainingByCurrency)) {
+        expect(amount, `${code} in ${JSON.stringify(balances)}`).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('keeps the per-currency leftovers consistent with the pooled figure', () => {
+    const rate: Record<string, number> = { CHF: 1, USD, EUR };
+    const cases: Record<string, number>[] = [
+      { CHF: 1000, USD: 500 },
+      { USD: 900 },
+      { CHF: 250, USD: 100, EUR: 400 },
+    ];
+    for (const balances of cases) {
+      const r = calculate(make({ cashBalances: balances, conversionSpread: 0.0025 }));
+      const pooled = Object.entries(r.cashRemainingByCurrency).reduce(
+        (a, [code, amount]) => a + amount * rate[code],
+        0,
+      );
+      expect(pooled, JSON.stringify(balances)).toBeCloseTo(Math.max(0, r.cashRemaining), 4);
+    }
+  });
+});
+
+describe('settleBalances', () => {
+  const settings: Settings = {
+    baseCurrency: 'CHF',
+    cashBalances: { CHF: 1000, USD: 500, EUR: 200 },
+    fxRates: { USD: 0.85, EUR: 0.95 },
+    rounding: 'truncate',
+    allowSell: false,
+    feeMode: 'all',
+    allowFractionalShares: false,
+    useLeftoverCash: false,
+    conversionSpread: 0,
+    conversionFee: 0,
+  };
+
+  it('takes a spend out of its own currency when that balance covers it', () => {
+    const out = settleBalances(settings, { USD: 300 }, 0);
+    expect(out).toEqual({ CHF: 1000, USD: 200, EUR: 200 });
+  });
+
+  it('drains the matching balance first, then falls back to the base currency', () => {
+    // 700 USD wanted, 500 held: the 200 USD shortfall costs 170 CHF.
+    const out = settleBalances(settings, { USD: 700 }, 0);
+    expect(out.USD).toBeCloseTo(0, 6);
+    expect(out.CHF).toBeCloseTo(1000 - 200 * 0.85, 6);
+    expect(out.EUR).toBeCloseTo(200, 6);
+  });
+
+  it('moves on to other balances once the base currency is exhausted', () => {
+    const out = settleBalances({ ...settings, cashBalances: { CHF: 50, USD: 0, EUR: 200 } }, { USD: 100 }, 0);
+    expect(out.CHF).toBeCloseTo(0, 6);
+    // 85 CHF needed, 50 from CHF, the remaining 35 CHF from EUR at 0.95.
+    expect(out.EUR).toBeCloseTo(200 - 35 / 0.95, 5);
+  });
+
+  it('takes the conversion cost out of the balances too', () => {
+    const out = settleBalances(settings, { USD: 300 }, 12);
+    expect(out.USD).toBeCloseTo(200, 6);
+    expect(out.CHF).toBeCloseTo(988, 6);
+  });
+
+  it('clamps at zero rather than going negative', () => {
+    const out = settleBalances(settings, { USD: 99_999 }, 0);
+    for (const v of Object.values(out)) expect(v).toBeGreaterThanOrEqual(0);
+  });
+
+  it('leaves balances alone when nothing is spent', () => {
+    expect(settleBalances(settings, {}, 0)).toEqual({ CHF: 1000, USD: 500, EUR: 200 });
+  });
+});
+
+describe('fees in the position’s own currency', () => {
+  const settings: Settings = {
+    baseCurrency: 'CHF',
+    cashBalances: { CHF: 10_000 },
+    fxRates: { USD: 0.85 },
+    rounding: 'truncate',
+    allowSell: false,
+    feeMode: 'all',
+    allowFractionalShares: false,
+    useLeftoverCash: false,
+    conversionSpread: 0,
+    conversionFee: 0,
+  };
+
+  it('converts a foreign fee into the base currency for the totals', () => {
+    const r = calculate({
+      version: 2,
+      name: 't',
+      settings,
+      positions: [
+        { id: 'a', ticker: 'A', name: 'A', currency: 'USD', unitPrice: 100, shares: 0, targetWeight: 1, fee: 20 },
+      ],
+    });
+    // 20 USD × 0.85 = 17 CHF
+    expect(r.feesReserved).toBeCloseTo(17, 8);
+    expect(r.positions[0].feeApplied).toBe(20);
+    expect(r.positions[0].feeAppliedBase).toBeCloseTo(17, 8);
+  });
+
+  it('sums fees across currencies correctly', () => {
+    const r = calculate({
+      version: 2,
+      name: 't',
+      settings,
+      positions: [
+        { id: 'a', ticker: 'A', name: 'A', currency: 'USD', unitPrice: 100, shares: 0, targetWeight: 0.5, fee: 20 },
+        { id: 'b', ticker: 'B', name: 'B', currency: 'CHF', unitPrice: 100, shares: 0, targetWeight: 0.5, fee: 30 },
+      ],
+    });
+    expect(r.feesReserved).toBeCloseTo(20 * 0.85 + 30, 8);
   });
 });

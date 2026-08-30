@@ -64,10 +64,21 @@ export function StepResult({
                 <button
                   className="btn"
                   onClick={() =>
-                    onSettings({ ...settings, cash: Math.ceil(result.cashForFullTarget) })
+                    // Top the base-currency balance up to cover the shortfall,
+                    // leaving any other currency balances as they are.
+                    onSettings({
+                      ...settings,
+                      cashBalances: {
+                        ...settings.cashBalances,
+                        [base]:
+                          (settings.cashBalances[base] ?? 0) +
+                          Math.ceil(result.cashForFullTarget - result.cash),
+                      },
+                    })
                   }
                 >
-                  Invest {formatMoney(Math.ceil(result.cashForFullTarget), base, 0)} instead
+                  Add {formatMoney(Math.ceil(result.cashForFullTarget - result.cash), base, 0)}{' '}
+                  more
                 </button>
                 <button
                   className="btn"

@@ -11,15 +11,25 @@ export type Theme = 'light' | 'dark';
  * hand-edited file never crashes the app.
  */
 export function hydrate(raw: unknown): Portfolio {
-  const input = (raw ?? {}) as Partial<Portfolio>;
-  const s = (input.settings ?? {}) as Partial<Portfolio['settings']>;
+  const input = (raw ?? {}) as Partial<Portfolio> & { settings?: { cash?: unknown } };
+  const s = (input.settings ?? {}) as Partial<Portfolio['settings']> & { cash?: unknown };
   const positions = Array.isArray(input.positions) ? input.positions : [];
+  const baseCurrency = (s.baseCurrency || 'CHF').toUpperCase();
+
+  // v1 → v2: a single `cash` number becomes a base-currency balance. Fees keep
+  // their numbers and are simply re-read as the position's own currency, which
+  // is what a v1 file most likely meant for a single-currency portfolio.
+  const balances = sanitizeBalances(s.cashBalances);
+  if (Object.keys(balances).length === 0 && num(s.cash, 0) > 0) {
+    balances[baseCurrency] = num(s.cash, 0);
+  }
+
   return {
-    version: 1,
+    version: 2,
     name: typeof input.name === 'string' && input.name ? input.name : 'Portfolio',
     settings: {
-      baseCurrency: s.baseCurrency || 'CHF',
-      cash: num(s.cash, 0),
+      baseCurrency,
+      cashBalances: balances,
       fxRates: sanitizeRates(s.fxRates),
       rounding:
         s.rounding === 'floor' || s.rounding === 'nearest' ? s.rounding : 'truncate',
@@ -27,6 +37,8 @@ export function hydrate(raw: unknown): Portfolio {
       feeMode: s.feeMode === 'traded' ? 'traded' : 'all',
       allowFractionalShares: s.allowFractionalShares ?? false,
       useLeftoverCash: s.useLeftoverCash ?? true,
+      conversionSpread: num(s.conversionSpread, 0.0025),
+      conversionFee: num(s.conversionFee, 0),
     },
     positions: positions.map((p, i) => ({
       id: typeof p?.id === 'string' && p.id ? p.id : `p_${i}_${Math.random().toString(36).slice(2, 8)}`,
@@ -47,6 +59,18 @@ export function hydrate(raw: unknown): Portfolio {
 function num(v: unknown, fallback: number): number {
   const n = typeof v === 'string' ? Number(v) : (v as number);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** Cash balances: uppercase codes, finite non-negative amounts. */
+function sanitizeBalances(balances: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (balances && typeof balances === 'object') {
+    for (const [k, v] of Object.entries(balances as Record<string, unknown>)) {
+      const n = num(v, NaN);
+      if (Number.isFinite(n) && n >= 0) out[k.toUpperCase()] = n;
+    }
+  }
+  return out;
 }
 
 function sanitizeRates(rates: unknown): Record<string, number> {

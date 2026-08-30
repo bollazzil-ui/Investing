@@ -47,8 +47,10 @@ Saving records the purchase in the app; placing the orders with your broker is
 still up to you.
 
 **Advanced** mode is the same engine as a single dense dashboard — every
-position, setting and intermediate figure at once. The toggle is in the header
-and your choice is remembered.
+position and intermediate figure at once, across the full width of the window.
+The calculation settings live in a dialog behind **Settings** in the header, so
+nothing competes with the tables for space. The mode toggle is in the header and
+your choice is remembered.
 
 ![Advanced view](docs/screenshot-light.png)
 
@@ -142,6 +144,40 @@ Three guarantees hold whatever the settings:
   every position at once. The leftover pass buys extra whole shares of whichever
   product is still furthest below target, as long as the share brings it closer
   to target than skipping it would.
+
+### Money in several currencies
+
+Cash to invest is held **per currency** — `1'000 CHF + 500 USD` — and every
+balance is editable under *Settings → Cash to invest*.
+
+The balances form **one pooled budget**: converted at your exchange rates into a
+single investable amount, so USD cash can fund a EUR purchase. What makes that
+honest is that converting is not free — the part of a purchase your matching
+balance cannot cover is charged a **spread** (0.25% by default) plus an optional
+**flat fee per currency converted**. Both are set under *Settings → Currency
+conversion*, and the plan says so when it has to convert:
+
+> The plan buys more EUR and USD than those cash balances hold, so 0.60 CHF of
+> currency conversion is included. Add cash in those currencies to avoid it.
+
+Conversion cost, fees and the plan itself each depend on the others, so they are
+resolved together by iterating to a fixed point — the same way per-trade fees
+already were.
+
+**Settling a purchase** drains the cheapest source first: the balance matching
+what you are buying (which needs no conversion), then the base currency, then
+the largest remaining balance. That order is deterministic, so the leftover
+figures follow from the numbers on screen.
+
+### Fees are in each position's own currency
+
+A USD-listed ETF is charged in USD, a EUR-listed one in EUR. Totals convert into
+the base currency for the summary, and both figures are reported —
+`feeApplied` in the position's currency, `feeAppliedBase` in the base.
+
+Upgrading a portfolio saved before this change keeps the fee *numbers* as they
+were and re-reads them as the position's own currency: a fee of `20` on a
+USD position now means 20 USD rather than 20 CHF.
 
 ### Fees: reserved vs. charged
 
@@ -314,20 +350,23 @@ src/
     isin.ts             ISIN shape and check-digit validation
     lookup.ts           ISIN/ticker → product, and its response parsing
     refresh.ts          Refresh-all orchestration and its per-item report
+    storage.ts          localStorage, import hydration and the v1 → v2 migration
     calc.test.ts        Pinned to the spreadsheet's own numbers, plus the
                         affordability and leftover-cash guarantees
     isin.test.ts        Check digits, against ten real ISINs
     lookup.test.ts      Parsing and every failure path, on recorded responses
     quotes.test.ts      Provider request/response handling
     refresh.test.ts     Every refresh outcome, including partial failure
+    storage.test.ts     The v1 → v2 migration and hydration robustness
     quotes.ts           Optional FX and price fetching
-    storage.ts          localStorage + import hydration
     exporters.ts        CSV / JSON output
     format.ts           Locale-aware formatting and parsing
     colors.ts           Categorical colour assignment
   components/
     guided/             The four-step flow
     AddProductDialog    ISIN/ticker lookup dialog
+    SettingsDialog      Calculation settings
+    CashBalances        Per-currency cash editor
     BuyDialog           "What does this much money buy?"
     *.tsx               The advanced dashboard
   App.tsx               State, wiring, import/export

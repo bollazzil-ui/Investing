@@ -160,7 +160,7 @@ export function TradePlan({
                       {p.tradeShares === 0 ? '—' : formatSignedMoney(p.tradeValueBase)}
                     </td>
                     <td className="td num text-[var(--ink-3)]">
-                      {p.feeApplied === 0 ? '—' : formatMoney(p.feeApplied)}
+                      {p.feeApplied === 0 ? '—' : `${formatMoney(p.feeApplied)} ${p.currency}`}
                     </td>
                     <td className="td num">{formatShares(p.newShares)}</td>
                     <td className="td num">{formatPercent(p.newWeight)}</td>

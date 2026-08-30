@@ -39,6 +39,16 @@ function Tile({
   );
 }
 
+/** With one balance the total says it all; with several, show the mix. */
+function cashHint(result: CalcResult, currency: string): string {
+  const entries = Object.entries(result.cashBalances).filter(([, v]) => v > 0);
+  if (entries.length <= 1) return 'Liquider Teil';
+  return entries
+    .sort(([a], [b]) => (a === currency ? -1 : b === currency ? 1 : a.localeCompare(b)))
+    .map(([code, amount]) => `${formatMoney(amount, code, 0)}`)
+    .join(' + ');
+}
+
 export function SummaryTiles({ result, currency }: { result: CalcResult; currency: string }) {
   const growth = result.newTotal - result.currentTotal;
   return (
@@ -48,7 +58,11 @@ export function SummaryTiles({ result, currency }: { result: CalcResult; currenc
         value={formatMoney(result.currentTotal, currency)}
         hint={`${result.positions.length} position${result.positions.length === 1 ? '' : 's'}`}
       />
-      <Tile label="Cash to invest" value={formatMoney(result.cash, currency)} hint="Liquider Teil" />
+      <Tile
+        label="Cash to invest"
+        value={formatMoney(result.cash, currency)}
+        hint={cashHint(result, currency)}
+      />
       <Tile
         label="Fees"
         value={formatMoney(result.feesTotal, currency)}
