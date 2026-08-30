@@ -23,6 +23,8 @@ import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
 import { GuidedFlow } from './components/GuidedFlow';
 import { BuyDialog } from './components/BuyDialog';
+import { RefreshDialog } from './components/RefreshDialog';
+import { REFRESH_TIMEOUT_MS, refreshAll, type RefreshReport } from './lib/refresh';
 
 type FxStatus = 'idle' | 'loading' | { asOf: string } | { error: string };
 type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefined>;
@@ -35,6 +37,8 @@ export default function App() {
   const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>({});
   const [toast, setToast] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshReport, setRefreshReport] = useState<RefreshReport | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,12 +81,16 @@ export default function App() {
     if (codes.length === 0) return;
     setFxStatus('loading');
     try {
-      const { rates, asOf } = await fetchFxRates(portfolio.settings.baseCurrency, codes);
+      const { rates, asOf, missing } = await fetchFxRates(portfolio.settings.baseCurrency, codes);
       setPortfolio((p) => ({
         ...p,
         settings: { ...p.settings, fxRates: { ...p.settings.fxRates, ...rates } },
       }));
-      setFxStatus({ asOf });
+      setFxStatus(
+        missing.length > 0
+          ? { error: `No rate available for ${missing.join(', ')} — enter it manually.` }
+          : { asOf },
+      );
     } catch (e) {
       setFxStatus({ error: message(e) });
     }
@@ -113,6 +121,39 @@ export default function App() {
     },
     [portfolio.positions],
   );
+
+  /**
+   * Re-fetches every exchange rate and share price at once. A clean run just
+   * shows a toast; anything that did not update opens the report, which names
+   * each currency or product and why, so it can be typed in by hand.
+   */
+  const refreshPrices = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
+    try {
+      const { portfolio: next, report } = await refreshAll(portfolio, {
+        signal: controller.signal,
+      });
+      setPortfolio(next);
+      if (report.clean) {
+        setToast(
+          report.updated > 0
+            ? `Refreshed ${report.updated} value${report.updated === 1 ? '' : 's'}.`
+            : 'Everything was already up to date.',
+        );
+      } else {
+        setRefreshReport(report);
+      }
+    } catch (e) {
+      // refreshAll resolves rather than rejects, so this is a genuine surprise.
+      setToast(`Refresh failed: ${message(e)}`);
+    } finally {
+      clearTimeout(timer);
+      setRefreshing(false);
+    }
+  }, [portfolio, refreshing]);
 
   function exportJson() {
     downloadFile(
@@ -193,6 +234,23 @@ export default function App() {
                 e.target.value = '';
               }}
             />
+            <button
+              className="btn"
+              onClick={() => void refreshPrices()}
+              disabled={refreshing}
+              title="Fetch current exchange rates and share prices"
+              aria-busy={refreshing}
+            >
+              {refreshing ? (
+                <span
+                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent)]"
+                  aria-hidden
+                />
+              ) : (
+                <span aria-hidden>⟳</span>
+              )}
+              {refreshing ? 'Refreshing…' : 'Refresh prices'}
+            </button>
             <button className="btn btn-primary" onClick={() => setBuying(true)}>
               Buy shares
             </button>
@@ -311,6 +369,12 @@ export default function App() {
         />
           </>
         )}
+
+        <RefreshDialog
+          report={refreshReport}
+          baseCurrency={portfolio.settings.baseCurrency}
+          onClose={() => setRefreshReport(null)}
+        />
 
         <BuyDialog
           open={buying}

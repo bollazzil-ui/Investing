@@ -215,6 +215,35 @@ nine categorical hues cannot be told apart reliably. The tables stay exact.
 
 ---
 
+## Refreshing prices
+
+**Refresh prices** in the header re-fetches every exchange rate and every share
+price the portfolio needs, in one action.
+
+![Refresh report](docs/screenshot-refresh.png)
+
+When everything updates, a toast says how many values changed. When anything
+does not, a report opens naming **each currency or product that failed and
+why** — a symbol the provider does not know, a service that could not be
+reached, a rate-limited request, or a position with no quote symbol to look up.
+
+Two rules the report depends on:
+
+- **A failure never overwrites a value.** Anything that could not be fetched
+  keeps exactly what it had, so a price you typed in yourself is never replaced
+  by a blank or a stale guess.
+- **Partial success is still success.** One unreachable currency does not
+  discard the rates that did arrive, and one bad ticker does not stop the other
+  prices updating.
+
+Every price and rate field stays editable throughout — the refresh is a
+convenience, never a gate. Type a value in and the whole plan recalculates. A
+quote symbol that turns out to work is remembered on the position, so the next
+refresh is a single request.
+
+The per-position *Fetch* button and the *Fetch live* button for exchange rates
+are still there for refreshing one thing at a time.
+
 ## Live quotes
 
 Both are optional; the app is fully usable with manual entry.
@@ -284,10 +313,13 @@ src/
     calc.ts             The rebalancing engine (pure, no React)
     isin.ts             ISIN shape and check-digit validation
     lookup.ts           ISIN/ticker → product, and its response parsing
+    refresh.ts          Refresh-all orchestration and its per-item report
     calc.test.ts        Pinned to the spreadsheet's own numbers, plus the
                         affordability and leftover-cash guarantees
     isin.test.ts        Check digits, against ten real ISINs
     lookup.test.ts      Parsing and every failure path, on recorded responses
+    quotes.test.ts      Provider request/response handling
+    refresh.test.ts     Every refresh outcome, including partial failure
     quotes.ts           Optional FX and price fetching
     storage.ts          localStorage + import hydration
     exporters.ts        CSV / JSON output
