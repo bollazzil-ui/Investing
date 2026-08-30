@@ -42,7 +42,7 @@ export function TradePlan({
       description="What to place with your broker to reach the target allocation."
       actions={
         <>
-          <button className="btn btn-primary" onClick={onBuy} disabled={result.positions.length === 0}>
+          <button className="btn" onClick={onBuy} disabled={result.positions.length === 0}>
             Buy shares…
           </button>
           <button className="btn" onClick={onExportCsv} disabled={result.positions.length === 0}>
@@ -68,10 +68,12 @@ export function TradePlan({
               {trades.map((p) => (
                 <div
                   key={p.id}
-                  className="rounded-lg border p-3"
+                  className="rounded-[var(--r-md)] border p-3.5 transition-shadow hover:shadow-[var(--shadow-raised)]"
                   style={{
-                    borderColor: p.action === 'buy' ? 'var(--good)' : 'var(--critical)',
-                    background: p.action === 'buy' ? 'var(--good-soft)' : 'var(--critical-soft)',
+                    borderColor: 'var(--border)',
+                    background: `linear-gradient(90deg, color-mix(in srgb, ${
+                      p.action === 'buy' ? 'var(--good)' : 'var(--critical)'
+                    } 7%, var(--surface-1)) 0%, var(--surface-1) 42%)`,
                   }}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -134,7 +136,10 @@ export function TradePlan({
               </thead>
               <tbody>
                 {result.positions.map((p) => (
-                  <tr key={p.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)]">
+                  <tr
+                    key={p.id}
+                    className="border-b border-[var(--border)] transition-colors hover:bg-[var(--surface-2)]/70"
+                  >
                     <td className="td td-left">
                       <span className="font-medium">{p.ticker || p.name || '—'}</span>
                       {p.ticker && p.name && (

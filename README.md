@@ -54,6 +54,25 @@ and your choice is remembered.
 
 ---
 
+## Design
+
+A modern-fintech surface treatment: white cards floating on a softly tinted
+page, generous radii, layered shadows, and gradient accents on the primary
+action and the headline figure. The whole look lives in the token block at the
+top of `src/index.css` — every component reads those CSS variables, so the theme
+can be retuned in one place without touching a component.
+
+- **Typeface** is [Inter](https://rsms.me/inter/) via Google Fonts, with the
+  system UI stack as fallback. Figures use tabular numerals (`.num`) so columns
+  of money line up; letter-spacing is never applied to numbers.
+- **Colour** is the same colourblind-safety validated palette as before —
+  categorical hues for products, a blue/red diverging pair for drift, and
+  reserved status colours. It was re-validated against the new card surfaces.
+- **Status is never colour alone.** Buy and sell are stated with an icon and a
+  word on a chip; the coloured rail beside a product carries its identity, and
+  the card itself stays neutral so the two never compete.
+- Respects `prefers-reduced-motion`, and prints without the chrome.
+
 ## Quick start
 
 ```bash

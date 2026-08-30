@@ -116,7 +116,7 @@ export function BuyDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgb(8_12_20/0.55)] p-4 py-8 backdrop-blur-md"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -126,12 +126,13 @@ export function BuyDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-2xl"
+        className="card w-full max-w-2xl !rounded-[var(--r-xl)]"
+        style={{ boxShadow: 'var(--shadow-overlay)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+        <header className="flex items-start justify-between gap-3 rounded-t-[var(--r-xl)] border-b border-[var(--border)] bg-[var(--surface-2)] px-5 py-4">
           <div>
-            <h2 id={titleId} className="text-lg font-semibold tracking-tight">
+            <h2 id={titleId} className="text-[1.0625rem] font-semibold tracking-[-0.02em]">
               Buy shares
             </h2>
             <p className="mt-0.5 text-xs text-[var(--ink-3)]">
@@ -228,8 +229,12 @@ export function BuyDialog({
                         return (
                           <li
                             key={p.id}
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border p-3"
-                            style={{ borderColor: 'var(--good)', background: 'var(--good-soft)' }}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--r-md)] border p-3"
+                            style={{
+                              borderColor: 'var(--border)',
+                              background:
+                                'linear-gradient(90deg, color-mix(in srgb, var(--good) 7%, var(--surface-1)) 0%, var(--surface-1) 42%)',
+                            }}
                           >
                             <span
                               className="h-9 w-1.5 shrink-0 rounded-full"
@@ -245,6 +250,12 @@ export function BuyDialog({
                                   share{p.tradeShares === 1 ? '' : 's'} of
                                 </span>
                                 <span className="text-base font-semibold">{p.ticker}</span>
+                                <span
+                                  className="chip"
+                                  style={{ background: 'var(--good-soft)', color: 'var(--good)' }}
+                                >
+                                  <span aria-hidden>▲</span> Buy
+                                </span>
                               </div>
                               <p className="truncate text-xs text-[var(--ink-3)]">{p.name}</p>
                             </div>
@@ -310,7 +321,7 @@ export function BuyDialog({
           )}
         </div>
 
-        <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] px-5 py-3">
+        <footer className="flex flex-wrap items-center gap-3 rounded-b-[var(--r-xl)] border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-3.5">
           <button className="btn" onClick={onClose}>
             Close without saving
           </button>

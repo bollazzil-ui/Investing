@@ -31,12 +31,12 @@ export function StepResult({
   return (
     <div className="card">
       <div className="px-4 py-6 sm:px-8 sm:py-8">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+        <h2 className="text-xl font-semibold tracking-[-0.022em] sm:text-[1.6rem] sm:leading-[1.2]">
           {buys.length === 0 && sells.length === 0
             ? 'Nothing to buy right now'
             : `Buy ${buys.length === 1 ? 'this' : `these ${buys.length}`}`}
         </h2>
-        <p className="mt-1 text-sm text-[var(--ink-2)]">
+        <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
           {buys.length === 0 && sells.length === 0
             ? 'Your money does not stretch to a whole share of anything that is currently below target. Add more cash, or switch on fractional shares in the advanced view.'
             : `Placing these orders puts ${formatMoney(spent, base)} of your ${formatMoney(
@@ -51,7 +51,7 @@ export function StepResult({
 
         {result.warnings.length > 0 && (
           <div
-            className="mt-5 rounded-xl border-l-4 px-4 py-3 text-sm"
+            className="mt-5 rounded-[var(--r-lg)] border-l-[3px] px-4 py-3 text-sm"
             style={{ borderLeftColor: 'var(--warning)', background: 'var(--warning-soft)' }}
           >
             <ul className="space-y-1.5">
@@ -85,8 +85,12 @@ export function StepResult({
             {buys.map((p) => (
               <li
                 key={p.id}
-                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border-2 p-4"
-                style={{ borderColor: 'var(--good)', background: 'var(--good-soft)' }}
+                className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--r-lg)] border p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
+                style={{
+                  borderColor: 'var(--border)',
+                  background:
+                    'linear-gradient(90deg, color-mix(in srgb, var(--good) 7%, var(--surface-1)) 0%, var(--surface-1) 42%)',
+                }}
               >
                 <span
                   className="h-12 w-1.5 shrink-0 rounded-full"
@@ -102,6 +106,12 @@ export function StepResult({
                       share{p.tradeShares === 1 ? '' : 's'} of
                     </span>
                     <span className="text-xl font-semibold">{p.ticker}</span>
+                    <span
+                      className="chip"
+                      style={{ background: 'var(--good-soft)', color: 'var(--good)' }}
+                    >
+                      <span aria-hidden>▲</span> Buy
+                    </span>
                   </div>
                   <p className="truncate text-xs text-[var(--ink-3)]">{p.name}</p>
                 </div>
@@ -139,8 +149,12 @@ export function StepResult({
               {sells.map((p) => (
                 <li
                   key={p.id}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border-2 p-4"
-                  style={{ borderColor: 'var(--critical)', background: 'var(--critical-soft)' }}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--r-lg)] border p-4 transition-shadow hover:shadow-[var(--shadow-raised)]"
+                  style={{
+                    borderColor: 'var(--border)',
+                    background:
+                      'linear-gradient(90deg, color-mix(in srgb, var(--critical) 7%, var(--surface-1)) 0%, var(--surface-1) 42%)',
+                  }}
                 >
                   <span
                     className="h-12 w-1.5 shrink-0 rounded-full"
@@ -156,6 +170,12 @@ export function StepResult({
                         share{Math.abs(p.tradeShares) === 1 ? '' : 's'} of
                       </span>
                       <span className="text-xl font-semibold">{p.ticker}</span>
+                      <span
+                        className="chip"
+                        style={{ background: 'var(--critical-soft)', color: 'var(--critical)' }}
+                      >
+                        <span aria-hidden>▼</span> Sell
+                      </span>
                     </div>
                     <p className="truncate text-xs text-[var(--ink-3)]">{p.name}</p>
                   </div>
@@ -169,7 +189,7 @@ export function StepResult({
         )}
 
         {/* Where the money went. */}
-        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--border)] sm:grid-cols-4">
           {[
             { k: 'You are investing', v: formatMoney(result.cash, base) },
             { k: 'Spent on shares', v: formatMoney(spent - raised, base) },
@@ -201,7 +221,7 @@ export function StepResult({
           </p>
         )}
 
-        <div className="mt-5 rounded-xl border border-[var(--border)] p-4">
+        <div className="mt-5 rounded-[var(--r-lg)] border border-[var(--border)] p-4">
           <Toggle
             checked={settings.useLeftoverCash}
             onChange={(useLeftoverCash) => onSettings({ ...settings, useLeftoverCash })}
@@ -248,7 +268,7 @@ export function StepResult({
       </div>
 
       <StepNav onBack={onBack} backLabel="Change the split">
-        <button className="btn btn-primary" onClick={onBuy}>
+        <button className="btn" onClick={onBuy}>
           Buy shares…
         </button>
         <button className="btn" onClick={onExportCsv}>

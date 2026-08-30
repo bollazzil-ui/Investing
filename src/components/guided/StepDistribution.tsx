@@ -58,10 +58,10 @@ export function StepDistribution({
   return (
     <div className="card">
       <div className="px-4 py-6 sm:px-8 sm:py-8">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+        <h2 className="text-xl font-semibold tracking-[-0.022em] sm:text-[1.6rem] sm:leading-[1.2]">
           How should it be split?
         </h2>
-        <p className="mt-1 text-sm text-[var(--ink-2)]">
+        <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
           The share of the whole portfolio each product should end up with.
         </p>
 
@@ -125,7 +125,7 @@ export function StepDistribution({
           {positions.map((p, i) => (
             <div
               key={p.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2.5 sm:flex-nowrap"
+              className="flex flex-wrap items-center gap-3 rounded-[var(--r-lg)] border border-[var(--border)] px-3 py-2.5 sm:flex-nowrap"
             >
               <span
                 className="h-8 w-1.5 shrink-0 rounded-full"

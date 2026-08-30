@@ -10,25 +10,31 @@ function Tile({
   label: string;
   value: string;
   hint?: string;
-  tone?: 'default' | 'accent' | 'good' | 'critical';
+  tone?: 'default' | 'hero' | 'good' | 'critical';
 }) {
+  const hero = tone === 'hero';
   const valueColor =
-    tone === 'good'
-      ? 'var(--good)'
-      : tone === 'critical'
-        ? 'var(--critical)'
-        : tone === 'accent'
-          ? 'var(--accent)'
-          : 'var(--ink-1)';
+    tone === 'good' ? 'var(--good)' : tone === 'critical' ? 'var(--critical)' : 'var(--ink-1)';
   return (
-    <div className="card px-4 py-3">
-      <div className="text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-[var(--ink-3)]">
+    <div className={`card px-4 py-3.5 ${hero ? 'card-hero' : ''}`}>
+      <div
+        className={`text-[0.6875rem] font-[650] uppercase tracking-[0.06em] ${
+          hero ? 'hero-label' : 'text-[var(--ink-3)]'
+        }`}
+      >
         {label}
       </div>
-      <div className="num mt-1 text-lg font-semibold tracking-tight" style={{ color: valueColor }}>
+      <div
+        className={`num mt-1.5 text-[1.375rem] font-semibold leading-tight tracking-[-0.02em] ${
+          hero ? 'hero-value' : ''
+        }`}
+        style={hero ? undefined : { color: valueColor }}
+      >
         {value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-[var(--ink-3)]">{hint}</div>}
+      {hint && (
+        <div className={`mt-1 text-xs ${hero ? 'hero-hint' : 'text-[var(--ink-3)]'}`}>{hint}</div>
+      )}
     </div>
   );
 }
@@ -56,7 +62,7 @@ export function SummaryTiles({ result, currency }: { result: CalcResult; currenc
         label="Investable total"
         value={formatMoney(result.investable, currency)}
         hint="Holdings + cash − reserved fees"
-        tone="accent"
+        tone="hero"
       />
       <Tile
         label="After trades"

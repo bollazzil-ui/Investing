@@ -3,26 +3,37 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Palette. Categorical hues and the diverging pair come from a validated
- * set (CVD-safe in both modes); the dark column is re-stepped for the dark
- * surface rather than being an automatic flip.
+ * Design tokens.
+ *
+ * Modern-fintech surface treatment — white cards floating on a softly tinted
+ * page, generous radii, layered shadows — over a categorical palette that is
+ * colourblind-safety validated against both chart surfaces. Every component
+ * reads these variables, so the whole look lives in this one block.
  */
 :root {
   color-scheme: light;
 
-  --page: #f4f4f1;
-  --surface-1: #fcfcfb;
-  --surface-2: #efefeb;
-  --border: #e0dfda;
-  --border-strong: #c9c8c1;
+  /* Surfaces */
+  --page: #f4f6fa;
+  --page-tint: radial-gradient(120% 80% at 50% -10%, #eaf1fd 0%, rgba(234, 241, 253, 0) 60%);
+  --surface-1: #ffffff;
+  --surface-2: #f1f4f9;
+  --surface-3: #e7ecf4;
+  --border: #e3e8f0;
+  --border-strong: #c8d2e0;
 
-  --ink-1: #0b0b0b;
-  --ink-2: #52514e;
-  --ink-3: #7c7b74;
+  /* Ink */
+  --ink-1: #0f172a;
+  --ink-2: #4a5568;
+  --ink-3: #75839a;
 
+  /* Accent (validated blue, unchanged) */
   --accent: #2a78d6;
+  --accent-hi: #3d8ae4;
+  --accent-lo: #2064b6;
   --accent-ink: #ffffff;
-  --accent-soft: #e7f0fc;
+  --accent-soft: #e8f1fd;
+  --accent-ring: rgb(42 120 214 / 0.28);
 
   /* Categorical slots, fixed order — never cycled. */
   --series-1: #2a78d6;
@@ -38,34 +49,51 @@
   /* Diverging pair for drift: blue = underweight, red = overweight. */
   --diverge-neg: #2a78d6;
   --diverge-pos: #d03b3b;
-  --diverge-mid: #dedcd6;
+  --diverge-mid: #dde3ec;
 
+  /* Status */
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
-  --good-soft: #e6f5e6;
-  --warning-soft: #fdf3dd;
-  --critical-soft: #fae9e9;
+  --good-soft: #e8f7e8;
+  --warning-soft: #fdf4de;
+  --critical-soft: #fbeaea;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 3px rgb(0 0 0 / 0.04);
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.05);
+  --shadow-raised: 0 2px 4px rgb(15 23 42 / 0.04), 0 12px 28px -12px rgb(15 23 42 / 0.18);
+  --shadow-overlay: 0 32px 72px -20px rgb(15 23 42 / 0.32), 0 4px 12px rgb(15 23 42 / 0.08);
+  --shadow-btn: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-accent: 0 1px 2px rgb(32 100 182 / 0.24), 0 6px 16px -6px rgb(32 100 182 / 0.45);
+
+  /* Geometry */
+  --r-sm: 0.5rem;
+  --r-md: 0.75rem;
+  --r-lg: 1rem;
+  --r-xl: 1.25rem;
 }
 
 .dark {
   color-scheme: dark;
 
-  --page: #0d0d0d;
-  --surface-1: #1a1a19;
-  --surface-2: #232322;
-  --border: #313130;
-  --border-strong: #464643;
+  --page: #0a0e15;
+  --page-tint: radial-gradient(120% 80% at 50% -10%, #16233a 0%, rgba(22, 35, 58, 0) 60%);
+  --surface-1: #141a24;
+  --surface-2: #1c2431;
+  --surface-3: #26303f;
+  --border: #26303f;
+  --border-strong: #3a4759;
 
-  --ink-1: #ffffff;
-  --ink-2: #c3c2b7;
-  --ink-3: #8d8c83;
+  --ink-1: #f6f8fb;
+  --ink-2: #c0cbdb;
+  --ink-3: #8996a9;
 
   --accent: #3987e5;
+  --accent-hi: #4f97ec;
+  --accent-lo: #2a70c4;
   --accent-ink: #06182c;
-  --accent-soft: #16283d;
+  --accent-soft: #16273e;
+  --accent-ring: rgb(57 135 229 / 0.36);
 
   --series-1: #3987e5;
   --series-2: #d95926;
@@ -79,16 +107,20 @@
 
   --diverge-neg: #3987e5;
   --diverge-pos: #e66767;
-  --diverge-mid: #3a3a37;
+  --diverge-mid: #2b3648;
 
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
-  --good-soft: #122712;
-  --warning-soft: #2e2609;
-  --critical-soft: #2e1414;
+  --good-soft: #10240f;
+  --warning-soft: #2b2408;
+  --critical-soft: #2c1414;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.4), 0 12px 28px -12px rgb(0 0 0 / 0.7);
+  --shadow-overlay: 0 32px 72px -20px rgb(0 0 0 / 0.8), 0 4px 12px rgb(0 0 0 / 0.5);
+  --shadow-btn: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-accent: 0 1px 2px rgb(0 0 0 / 0.4), 0 6px 16px -6px rgb(57 135 229 / 0.5);
 }
 
 @theme inline {
@@ -111,9 +143,10 @@
   --color-critical-soft: var(--critical-soft);
 
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    'Inter var', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 }
 
 html,
@@ -123,35 +156,95 @@ body,
 }
 
 body {
-  background: var(--page);
+  background-color: var(--page);
+  background-image: var(--page-tint);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--ink-1);
   font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: -0.006em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tabular figures everywhere numbers are compared down a column. */
+/*
+ * Headings tighten slightly as they grow, which is what makes large type look
+ * set rather than scaled. Numbers never get letter-spacing — it costs width and
+ * breaks the alignment of a figures column.
+ */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.019em;
+}
+
+/* Tabular figures wherever numbers are compared down a column. */
 .num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
+  letter-spacing: 0;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink-1);
 }
 
 @layer components {
   .card {
     background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: 0.875rem;
+    border-radius: var(--r-lg);
     box-shadow: var(--shadow-card);
+  }
+
+  /* The one card per view that should read as the headline. */
+  .card-hero {
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.06), transparent),
+      linear-gradient(135deg, var(--accent-hi), var(--accent-lo));
+    border-color: transparent;
+    box-shadow: var(--shadow-accent);
+    color: var(--accent-ink);
+  }
+  .card-hero .hero-label,
+  .card-hero .hero-hint {
+    color: rgb(255 255 255 / 0.78);
+  }
+  .card-hero .hero-value {
+    color: #ffffff;
+  }
+  .dark .card-hero {
+    color: #ffffff;
+  }
+  .dark .card-hero .hero-label,
+  .dark .card-hero .hero-hint {
+    color: rgb(255 255 255 / 0.75);
   }
 
   .field {
     width: 100%;
     background: var(--surface-1);
     border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    padding: 0.4rem 0.55rem;
+    border-radius: var(--r-sm);
+    padding: 0.45rem 0.6rem;
     font-size: 0.875rem;
+    line-height: 1.45;
     color: var(--ink-1);
-    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.03);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background 0.15s ease;
+  }
+  .dark .field {
+    background: var(--surface-2);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.25);
+  }
+  .field::placeholder {
+    color: var(--ink-3);
   }
   .field:hover {
     border-color: var(--border-strong);
@@ -159,11 +252,14 @@ body {
   .field:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
   }
   .field-invalid,
   .field-invalid:hover {
     border-color: var(--critical);
+  }
+  .field:disabled {
+    cursor: not-allowed;
   }
 
   .btn {
@@ -171,40 +267,66 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    border-radius: 0.5rem;
+    border-radius: var(--r-sm);
     border: 1px solid var(--border);
-    background: var(--surface-1);
+    background: linear-gradient(180deg, var(--surface-1), var(--surface-2));
     color: var(--ink-1);
-    padding: 0.4rem 0.75rem;
+    padding: 0.42rem 0.8rem;
     font-size: 0.8125rem;
-    font-weight: 500;
+    font-weight: 550;
+    line-height: 1.35;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.12s ease, border-color 0.12s ease;
+    box-shadow: var(--shadow-btn);
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.08s ease,
+      color 0.15s ease;
   }
-  .btn:hover {
-    background: var(--surface-2);
+  .btn:hover:not(:disabled) {
     border-color: var(--border-strong);
+    background: linear-gradient(180deg, var(--surface-1), var(--surface-3));
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(0.5px);
+    box-shadow: none;
   }
   .btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
   .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+    border-color: var(--accent-lo);
     color: var(--accent-ink);
+    box-shadow: var(--shadow-accent);
   }
-  .btn-primary:hover {
-    background: color-mix(in srgb, var(--accent) 88%, black);
-    border-color: color-mix(in srgb, var(--accent) 88%, black);
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--accent), var(--accent-lo));
+    border-color: var(--accent-lo);
   }
+
   .btn-ghost {
     border-color: transparent;
     background: transparent;
     color: var(--ink-2);
+    box-shadow: none;
   }
-  .btn-danger:hover {
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: transparent;
+    color: var(--ink-1);
+  }
+
+  .btn-danger:hover:not(:disabled) {
     background: var(--critical-soft);
     border-color: var(--critical);
     color: var(--critical);
@@ -213,9 +335,9 @@ body {
   .label {
     display: block;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 550;
     color: var(--ink-2);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.35rem;
   }
 
   .chip {
@@ -223,28 +345,32 @@ body {
     align-items: center;
     gap: 0.3rem;
     border-radius: 999px;
-    padding: 0.1rem 0.5rem;
+    padding: 0.12rem 0.5rem;
     font-size: 0.6875rem;
-    font-weight: 600;
+    font-weight: 650;
     letter-spacing: 0.02em;
     text-transform: uppercase;
+    line-height: 1.5;
+    white-space: nowrap;
   }
 
+  /* Small-caps column headers, the one place letter-spacing helps. */
   .th {
     font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-weight: 650;
+    letter-spacing: 0.045em;
     text-transform: uppercase;
     color: var(--ink-3);
     text-align: right;
-    padding: 0.5rem 0.6rem;
+    padding: 0.6rem;
     white-space: nowrap;
+    background: var(--surface-2);
   }
   .th-left {
     text-align: left;
   }
   .td {
-    padding: 0.45rem 0.6rem;
+    padding: 0.5rem 0.6rem;
     font-size: 0.875rem;
     text-align: right;
     white-space: nowrap;
@@ -253,12 +379,23 @@ body {
     text-align: left;
   }
 
+  /* Section eyebrow above a heading. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
   .scroll-x {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 }
 
+/* A consistent slider: neutral track, series-coloured thumb. */
 .range {
   -webkit-appearance: none;
   appearance: none;
@@ -269,33 +406,37 @@ body {
 .range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   border: 1px solid var(--border);
 }
 .range::-moz-range-track {
   height: 6px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--surface-3);
   border: 1px solid var(--border);
 }
 .range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 16px;
-  width: 16px;
-  margin-top: -6px;
+  height: 18px;
+  width: 18px;
+  margin-top: -7px;
   border-radius: 999px;
   background: var(--thumb, var(--accent));
-  border: 2px solid var(--surface-1);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+  border: 3px solid var(--surface-1);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.3);
+  transition: transform 0.1s ease;
+}
+.range::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
 }
 .range::-moz-range-thumb {
   height: 14px;
   width: 14px;
   border-radius: 999px;
   background: var(--thumb, var(--accent));
-  border: 2px solid var(--surface-1);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+  border: 3px solid var(--surface-1);
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.3);
 }
 .range:focus-visible {
   outline: 2px solid var(--accent);
@@ -310,10 +451,21 @@ body {
   }
   body {
     background: #fff;
+    background-image: none;
   }
   .card {
     box-shadow: none;
     break-inside: avoid;
+  }
+  .card-hero {
+    background: #fff !important;
+    color: #000 !important;
+    border: 1px solid #ccc !important;
+  }
+  .card-hero .hero-label,
+  .card-hero .hero-hint,
+  .card-hero .hero-value {
+    color: #000 !important;
   }
   li,
   tr {
@@ -326,4 +478,15 @@ input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

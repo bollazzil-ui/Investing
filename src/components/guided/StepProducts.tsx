@@ -43,10 +43,10 @@ export function StepProducts({
   return (
     <div className="card">
       <div className="px-4 py-6 sm:px-8 sm:py-8">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+        <h2 className="text-xl font-semibold tracking-[-0.022em] sm:text-[1.6rem] sm:leading-[1.2]">
           Which products are in your portfolio?
         </h2>
-        <p className="mt-1 text-sm text-[var(--ink-2)]">
+        <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
           Add anything new, remove what you no longer want. Enter what you already hold so the plan
           works from your real starting point — a brand-new product simply has 0 shares.
         </p>
@@ -57,7 +57,7 @@ export function StepProducts({
             return (
               <div
                 key={p.id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--surface-1)] p-3 sm:p-4"
+                className="rounded-[var(--r-lg)] border border-[var(--border)] bg-[var(--surface-1)] p-3 sm:p-4"
               >
                 <div className="flex items-start gap-3">
                   <span
@@ -155,7 +155,7 @@ export function StepProducts({
         </div>
 
         <button
-          className="mt-3 w-full rounded-xl border-2 border-dashed border-[var(--border-strong)] px-4 py-4 text-sm font-medium text-[var(--ink-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          className="mt-3 w-full rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border-strong)] px-4 py-4 text-sm font-medium text-[var(--ink-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
           onClick={() => setAdding(true)}
         >
           + Add a product

@@ -234,7 +234,7 @@ export function AddProductDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 py-8 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgb(8_12_20/0.55)] p-4 py-8 backdrop-blur-md"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -244,12 +244,13 @@ export function AddProductDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="card w-full max-w-2xl"
+        className="card w-full max-w-2xl !rounded-[var(--r-xl)]"
+        style={{ boxShadow: 'var(--shadow-overlay)' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+        <header className="flex items-start justify-between gap-3 rounded-t-[var(--r-xl)] border-b border-[var(--border)] bg-[var(--surface-2)] px-5 py-4">
           <div>
-            <h2 id={titleId} className="text-lg font-semibold tracking-tight">
+            <h2 id={titleId} className="text-[1.0625rem] font-semibold tracking-[-0.02em]">
               Add a product
             </h2>
             <p className="mt-0.5 text-xs text-[var(--ink-3)]">
@@ -445,7 +446,7 @@ export function AddProductDialog({
           </div>
         </div>
 
-        <footer className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] px-5 py-3">
+        <footer className="flex flex-wrap items-center gap-3 rounded-b-[var(--r-xl)] border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-3.5">
           <button className="btn" onClick={onClose}>
             Cancel
           </button>

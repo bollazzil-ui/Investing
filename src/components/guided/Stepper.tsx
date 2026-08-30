@@ -28,43 +28,57 @@ export function Stepper({
           const state = s.id === current ? 'current' : s.id < current ? 'done' : 'todo';
           const reachable = s.id <= furthest;
           return (
-            <li key={s.id} className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2">
+            <li
+              key={s.id}
+              className={`flex min-w-0 items-center gap-1 sm:flex-1 sm:gap-2 ${
+                state === 'current' ? 'flex-1' : 'flex-none'
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => reachable && onGo(s.id)}
                 disabled={!reachable}
                 aria-current={state === 'current' ? 'step' : undefined}
-                className="group flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors disabled:cursor-default"
-                style={{ background: state === 'current' ? 'var(--accent-soft)' : 'transparent' }}
+                className="group flex min-w-0 flex-1 items-center gap-2 rounded-[var(--r-md)] px-2.5 py-2 text-left transition-all duration-150 disabled:cursor-default"
+                style={{
+                  background: state === 'current' ? 'var(--accent-soft)' : 'transparent',
+                  boxShadow:
+                    state === 'current' ? 'inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent)' : 'none',
+                }}
               >
                 <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-150"
                   style={{
                     background:
                       state === 'todo'
-                        ? 'var(--surface-2)'
+                        ? 'var(--surface-3)'
                         : state === 'done'
                           ? 'var(--good)'
-                          : 'var(--accent)',
+                          : 'linear-gradient(135deg, var(--accent-hi), var(--accent-lo))',
                     color: state === 'todo' ? 'var(--ink-3)' : '#fff',
+                    boxShadow: state === 'todo' ? 'none' : '0 1px 3px rgb(15 23 42 / 0.25)',
                   }}
                 >
                   {state === 'done' ? '✓' : i + 1}
                 </span>
                 <span
-                  className="hidden truncate text-sm font-medium sm:block"
+                  className="hidden truncate text-sm font-[550] sm:block"
                   style={{
                     color: state === 'current' ? 'var(--accent)' : 'var(--ink-2)',
                   }}
                 >
                   {s.title}
                 </span>
-                <span
-                  className="truncate text-xs font-medium sm:hidden"
-                  style={{ color: state === 'current' ? 'var(--accent)' : 'var(--ink-2)' }}
-                >
-                  {s.short}
-                </span>
+                {/* Narrow screens have no room for four labels, so only the
+                    step being worked on is named; the rest are numbered. */}
+                {state === 'current' && (
+                  <span
+                    className="truncate text-xs font-[550] sm:hidden"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {s.short}
+                  </span>
+                )}
               </button>
               {i < STEPS.length - 1 && (
                 <span

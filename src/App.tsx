@@ -152,12 +152,16 @@ export default function App() {
 
   return (
     <div className="min-h-full">
-      <header className="no-print sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--page)_88%,transparent)] backdrop-blur">
+      <header className="no-print sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--page)_82%,transparent)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
-              style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-sm font-bold"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent-hi), var(--accent-lo))',
+                color: 'var(--accent-ink)',
+                boxShadow: 'var(--shadow-accent)',
+              }}
               aria-hidden
             >
               A
@@ -168,10 +172,10 @@ export default function App() {
                   value={portfolio.name}
                   onChange={(v) => setPortfolio((p) => ({ ...p, name: v }))}
                   ariaLabel="Portfolio name"
-                  className="!border-transparent !bg-transparent !px-1 text-base font-semibold"
+                  className="!border-transparent !bg-transparent !px-1 !shadow-none text-base font-semibold tracking-[-0.015em]"
                 />
               </div>
-              <p className="px-1 text-[0.6875rem] text-[var(--ink-3)]">
+              <p className="px-1 text-[0.6875rem] font-medium text-[var(--ink-3)]">
                 Allocation &amp; rebalancing calculator
               </p>
             </div>
@@ -195,7 +199,7 @@ export default function App() {
             <div
               role="radiogroup"
               aria-label="View mode"
-              className="mr-1 inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5"
+              className="mr-1 inline-flex rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-1"
             >
               {(['guided', 'advanced'] as const).map((m) => (
                 <button
@@ -204,7 +208,7 @@ export default function App() {
                   role="radio"
                   aria-checked={mode === m}
                   onClick={() => setMode(m)}
-                  className="rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors"
+                  className="rounded-[0.4rem] px-2.5 py-1 text-xs font-[550] capitalize transition-all duration-150"
                   style={{
                     background: mode === m ? 'var(--surface-1)' : 'transparent',
                     color: mode === m ? 'var(--ink-1)' : 'var(--ink-3)',
@@ -258,7 +262,7 @@ export default function App() {
         {result.warnings.length > 0 && (
           <div
             role="status"
-            className="card border-l-4 px-4 py-3"
+            className="card border-l-[3px] px-4 py-3.5"
             style={{ borderLeftColor: 'var(--warning)', background: 'var(--warning-soft)' }}
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-2)]">
@@ -318,7 +322,7 @@ export default function App() {
           }}
         />
 
-        <footer className="pb-6 pt-2 text-center text-xs text-[var(--ink-3)]">
+        <footer className="pb-8 pt-3 text-center text-xs text-[var(--ink-3)]">
           Saved in this browser only. Figures are an aid for your own decisions, not investment
           advice.
         </footer>
@@ -327,7 +331,8 @@ export default function App() {
       {toast && (
         <div
           role="status"
-          className="card fixed bottom-4 left-1/2 z-50 -translate-x-1/2 px-4 py-2.5 text-sm shadow-lg"
+          className="card fixed bottom-5 left-1/2 z-50 -translate-x-1/2 px-4 py-2.5 text-sm"
+          style={{ boxShadow: 'var(--shadow-overlay)' }}
         >
           {toast}
         </div>

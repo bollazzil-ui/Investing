@@ -166,15 +166,18 @@ export function Toggle({
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
+        className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
         style={{
           background: checked ? 'var(--accent)' : 'var(--surface-2)',
           borderColor: checked ? 'var(--accent)' : 'var(--border-strong)',
         }}
       >
         <span
-          className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all"
-          style={{ left: checked ? '1.125rem' : '0.125rem' }}
+          className="absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white transition-all duration-200"
+          style={{
+            left: checked ? '1.125rem' : '0.125rem',
+            boxShadow: '0 1px 3px rgb(15 23 42 / 0.3)',
+          }}
         />
       </button>
       <label htmlFor={id} className="cursor-pointer select-none">
@@ -200,7 +203,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className="inline-flex w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-0.5"
+      className="inline-flex w-full rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-1"
     >
       {options.map((o) => {
         const active = o.value === value;
@@ -212,7 +215,7 @@ export function SegmentedControl<T extends string>({
             aria-checked={active}
             title={o.hint}
             onClick={() => onChange(o.value)}
-            className="flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors"
+            className="flex-1 rounded-[0.4rem] px-2 py-1.5 text-xs font-[550] transition-all duration-150"
             style={{
               background: active ? 'var(--surface-1)' : 'transparent',
               color: active ? 'var(--ink-1)' : 'var(--ink-3)',
@@ -243,11 +246,13 @@ export function Section({
 }) {
   return (
     <section className={`card ${className}`}>
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 sm:px-5">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-[var(--ink-1)]">{title}</h2>
+          <h2 className="text-[0.9375rem] font-semibold text-[var(--ink-1)]">{title}</h2>
           {description && (
-            <p className="mt-0.5 text-xs leading-relaxed text-[var(--ink-3)]">{description}</p>
+            <p className="mt-1 max-w-prose text-xs leading-relaxed text-[var(--ink-3)]">
+              {description}
+            </p>
           )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -282,8 +287,8 @@ export function ChartTooltip({
     <div
       ref={ref}
       role="tooltip"
-      className="pointer-events-none fixed z-50 rounded-lg border border-[var(--border)] bg-[var(--surface-1)] px-2.5 py-1.5 text-xs shadow-lg"
-      style={{ left: x + 12 + offset, top: y - 8, boxShadow: '0 4px 16px rgb(0 0 0 / 0.16)' }}
+      className="pointer-events-none fixed z-50 rounded-[var(--r-md)] border border-[var(--border)] bg-[var(--surface-1)] px-3 py-2 text-xs"
+      style={{ left: x + 12 + offset, top: y - 8, boxShadow: 'var(--shadow-raised)' }}
     >
       {content}
     </div>

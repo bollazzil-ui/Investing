@@ -21,10 +21,10 @@ export function StepMoney({
   return (
     <div className="card">
       <div className="px-4 py-6 sm:px-8 sm:py-8">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+        <h2 className="text-xl font-semibold tracking-[-0.022em] sm:text-[1.6rem] sm:leading-[1.2]">
           How much are you investing?
         </h2>
-        <p className="mt-1 text-sm text-[var(--ink-2)]">
+        <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-[var(--ink-2)]">
           The new money you want to put in right now. Everything after this is worked out from it.
         </p>
 
@@ -83,7 +83,7 @@ export function StepMoney({
                   role="radio"
                   aria-checked={active}
                   onClick={() => onChange({ ...settings, allowSell: opt.sell })}
-                  className="rounded-xl border-2 p-4 text-left transition-colors"
+                  className="rounded-[var(--r-lg)] border-2 p-4 text-left transition-colors"
                   style={{
                     borderColor: active ? 'var(--accent)' : 'var(--border)',
                     background: active ? 'var(--accent-soft)' : 'var(--surface-1)',

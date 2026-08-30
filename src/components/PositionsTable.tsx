@@ -102,7 +102,7 @@ export function PositionsTable({
               return (
                 <Fragment key={p.id}>
                   <tr
-                    className="border-b border-[var(--border)] align-middle transition-colors hover:bg-[var(--surface-2)]"
+                    className="border-b border-[var(--border)] align-middle transition-colors hover:bg-[var(--surface-2)]/70"
                   >
                     <td className="td td-left">
                       <div className="flex items-center gap-2">
