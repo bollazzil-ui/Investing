@@ -22,6 +22,7 @@ import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
 import { GuidedFlow } from './components/GuidedFlow';
+import { BuyDialog } from './components/BuyDialog';
 
 type FxStatus = 'idle' | 'loading' | { asOf: string } | { error: string };
 type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefined>;
@@ -33,6 +34,7 @@ export default function App() {
   const [fxStatus, setFxStatus] = useState<FxStatus>('idle');
   const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [buying, setBuying] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -187,6 +189,9 @@ export default function App() {
                 e.target.value = '';
               }}
             />
+            <button className="btn btn-primary" onClick={() => setBuying(true)}>
+              Buy shares
+            </button>
             <div
               role="radiogroup"
               aria-label="View mode"
@@ -244,6 +249,7 @@ export default function App() {
             onSettings={setSettings}
             onExportCsv={exportCsv}
             onAdvanced={() => setMode('advanced')}
+            onBuy={() => setBuying(true)}
           />
         ) : (
           <>
@@ -297,9 +303,20 @@ export default function App() {
           result={result}
           currency={portfolio.settings.baseCurrency}
           onExportCsv={exportCsv}
+          onBuy={() => setBuying(true)}
         />
           </>
         )}
+
+        <BuyDialog
+          open={buying}
+          portfolio={portfolio}
+          onClose={() => setBuying(false)}
+          onSave={(next) => {
+            setPortfolio(next);
+            setToast('Purchase saved — your holdings and cash are updated.');
+          }}
+        />
 
         <footer className="pb-6 pt-2 text-center text-xs text-[var(--ink-3)]">
           Saved in this browser only. Figures are an aid for your own decisions, not investment

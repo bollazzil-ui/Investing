@@ -27,10 +27,12 @@ export function TradePlan({
   result,
   currency,
   onExportCsv,
+  onBuy,
 }: {
   result: CalcResult;
   currency: string;
   onExportCsv: () => void;
+  onBuy: () => void;
 }) {
   const trades = result.positions.filter((p) => p.tradeShares !== 0);
 
@@ -39,9 +41,14 @@ export function TradePlan({
       title="Trade plan"
       description="What to place with your broker to reach the target allocation."
       actions={
-        <button className="btn" onClick={onExportCsv} disabled={result.positions.length === 0}>
-          ↓ Export CSV
-        </button>
+        <>
+          <button className="btn btn-primary" onClick={onBuy} disabled={result.positions.length === 0}>
+            Buy shares…
+          </button>
+          <button className="btn" onClick={onExportCsv} disabled={result.positions.length === 0}>
+            ↓ Export CSV
+          </button>
+        </>
       }
     >
       {result.positions.length === 0 ? (

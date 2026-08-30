@@ -394,6 +394,53 @@ function fmtShort(v: number): string {
   return v.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+
+/**
+ * The plan for spending a specific amount of cash on shares.
+ *
+ * Always buy-only: the question "what can I buy for this much" has no room for
+ * selling, whatever the portfolio's own rebalancing setting says. Every other
+ * setting — rounding, fees, leftover cash — is honoured, so the numbers agree
+ * with the dashboard.
+ */
+export function planPurchase(
+  portfolio: Portfolio,
+  amount: number,
+): { portfolio: Portfolio; result: CalcResult } {
+  const scoped: Portfolio = {
+    ...portfolio,
+    settings: {
+      ...portfolio.settings,
+      cash: Number.isFinite(amount) && amount > 0 ? amount : 0,
+      allowSell: false,
+    },
+  };
+  return { portfolio: scoped, result: calculate(scoped) };
+}
+
+/**
+ * Records a purchase: the bought shares join the holdings, and whatever the
+ * plan could not spend stays as cash to invest.
+ *
+ * Returns a new portfolio; the input is never mutated.
+ */
+export function applyPurchase(portfolio: Portfolio, result: CalcResult): Portfolio {
+  const bought = new Map(result.positions.map((p) => [p.id, p.tradeShares]));
+  return {
+    ...portfolio,
+    settings: {
+      ...portfolio.settings,
+      // Money, so two decimals: the raw figure carries float noise from the
+      // FX conversion and would show up as 9.75962 in the cash field.
+      cash: Math.max(0, roundTo(result.cashRemaining, 2)),
+    },
+    positions: portfolio.positions.map((p) => {
+      const delta = bought.get(p.id);
+      return delta ? { ...p, shares: roundTo(p.shares + delta, 6) } : p;
+    }),
+  };
+}
+
 /** Scales all target weights so they sum to exactly 100%. */
 export function normalizeWeights(positions: Position[]): Position[] {
   const total = sum(positions.map((p) => p.targetWeight));

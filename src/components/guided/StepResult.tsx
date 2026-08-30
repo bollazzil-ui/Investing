@@ -11,6 +11,7 @@ export function StepResult({
   onBack,
   onExportCsv,
   onAdvanced,
+  onBuy,
 }: {
   result: CalcResult;
   settings: Settings;
@@ -18,6 +19,7 @@ export function StepResult({
   onBack: () => void;
   onExportCsv: () => void;
   onAdvanced: () => void;
+  onBuy: () => void;
 }) {
   const base = settings.baseCurrency;
   const buys = result.positions.filter((p) => p.tradeShares > 0);
@@ -246,6 +248,9 @@ export function StepResult({
       </div>
 
       <StepNav onBack={onBack} backLabel="Change the split">
+        <button className="btn btn-primary" onClick={onBuy}>
+          Buy shares…
+        </button>
         <button className="btn" onClick={onExportCsv}>
           ↓ Export CSV
         </button>

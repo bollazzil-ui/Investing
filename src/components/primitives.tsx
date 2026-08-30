@@ -17,6 +17,10 @@ export function NumberField({
   className = '',
   ariaLabel,
   disabled,
+  inputRef,
+  inputId,
+  commitOnChange,
+  onEnter,
 }: {
   value: number;
   onChange: (next: number) => void;
@@ -28,19 +32,34 @@ export function NumberField({
   className?: string;
   ariaLabel?: string;
   disabled?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement>;
+  inputId?: string;
+  /**
+   * Report each keystroke that parses, rather than waiting for blur. Use where
+   * something on screen is derived from the value and would otherwise sit out
+   * of step with what the field shows.
+   */
+  commitOnChange?: boolean;
+  /**
+   * Runs on Enter, receiving the value just committed. It is passed
+   * explicitly because the parent's state has not updated yet at that point.
+   */
+  onEnter?: (committed: number) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? formatForEdit(value);
   const parsed = draft === null ? value : parseNumber(draft);
   const invalid = draft !== null && draft.trim() !== '' && parsed === null;
 
-  function commit(raw: string) {
+  function commit(raw: string): number {
     const n = parseNumber(raw);
+    let committed = value;
     if (n !== null) {
-      const clamped = clamp(n, min, max);
-      onChange(clamped);
+      committed = clamp(n, min, max);
+      onChange(committed);
     }
     setDraft(null);
+    return committed;
   }
 
   return (
@@ -48,6 +67,8 @@ export function NumberField({
       <input
         type="text"
         inputMode="decimal"
+        id={inputId}
+        ref={inputRef}
         aria-label={ariaLabel}
         aria-invalid={invalid || undefined}
         disabled={disabled}
@@ -57,13 +78,23 @@ export function NumberField({
         style={suffix ? { paddingRight: `${0.55 + suffix.length * 0.55}rem` } : undefined}
         value={shown}
         step={step}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          if (!commitOnChange) return;
+          const parsed = parseNumber(e.target.value);
+          if (parsed !== null) onChange(clamp(parsed, min, max));
+        }}
         onFocus={(e) => e.currentTarget.select()}
         onBlur={(e) => commit(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
-            commit((e.target as HTMLInputElement).value);
-            (e.target as HTMLInputElement).blur();
+            const committed = commit((e.target as HTMLInputElement).value);
+            if (onEnter) {
+              e.preventDefault();
+              onEnter(committed);
+            } else {
+              (e.target as HTMLInputElement).blur();
+            }
           }
           if (e.key === 'Escape') setDraft(null);
         }}

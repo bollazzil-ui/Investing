@@ -24,6 +24,28 @@ removed, reordered and reweighted freely.
 
 ![Guided flow](docs/screenshot-guided.png)
 
+### Buying, in one dialog
+
+*Buy shares* — in the header, and on both views — answers the narrower
+question directly: **how much do you have to spend, and what does it buy?**
+
+![Buy shares dialog](docs/screenshot-buy.png)
+
+Type an amount, press **OK**, and the share counts appear with what they cost,
+the fees, and what is left over. **Save purchase** records it: the bought shares
+join your holdings, the leftover stays as cash to invest, and the whole
+dashboard updates. **Close without saving** — or Escape, or clicking outside —
+changes nothing.
+
+The dialog is always buy-only: "what can I buy for this much" has no room for
+selling, whatever the portfolio's own rebalancing setting says. Every other
+setting — rounding, fees, leftover cash — is honoured, so its numbers agree with
+the dashboard. Editing the amount after pressing OK marks the plan stale and
+blocks saving until you recalculate, so what you save is always what you saw.
+
+Saving records the purchase in the app; placing the orders with your broker is
+still up to you.
+
 **Advanced** mode is the same engine as a single dense dashboard — every
 position, setting and intermediate figure at once. The toggle is in the header
 and your choice is remembered.
@@ -124,6 +146,10 @@ nothing.
 | **Fractional shares** | Skips whole-share rounding entirely. |
 | **Use up the leftover cash** | After the main plan, buy extra whole shares of whatever is still furthest below target. |
 | **Hold — never trade** (per position) | The position counts toward the total but is never bought or sold, and is charged no fee. |
+
+`planPurchase` and `applyPurchase` in `calc.ts` are the pure functions behind
+*Buy shares*: the first works out what an amount buys, the second folds the
+result back into the portfolio. Neither mutates its input.
 
 The app warns when target weights do not sum to 100%, when the plan needs more
 cash than is available, and when a price or exchange rate is missing.
@@ -250,6 +276,8 @@ src/
     colors.ts           Categorical colour assignment
   components/
     guided/             The four-step flow
+    AddProductDialog    ISIN/ticker lookup dialog
+    BuyDialog           "What does this much money buy?"
     *.tsx               The advanced dashboard
   App.tsx               State, wiring, import/export
 ```

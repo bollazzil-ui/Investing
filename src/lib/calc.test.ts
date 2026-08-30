@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { calculate, normalizeWeights, planTrade, roundShares } from './calc';
+import {
+  applyPurchase,
+  calculate,
+  normalizeWeights,
+  planPurchase,
+  planTrade,
+  roundShares,
+} from './calc';
 import type { Portfolio, Position, Settings } from '../types';
 
 /**
@@ -548,5 +555,101 @@ describe('the plan is always affordable', () => {
     });
     expect(r.positions[0].tradeShares).toBe(80);
     expect(r.positions[1].tradeShares).toBe(20);
+  });
+});
+
+describe('planPurchase / applyPurchase', () => {
+  const settings: Settings = {
+    baseCurrency: 'CHF',
+    cash: 0,
+    fxRates: { USD: 0.8505 },
+    rounding: 'truncate',
+    allowSell: true, // deliberately on, to prove the purchase plan overrides it
+    feeMode: 'all',
+    allowFractionalShares: false,
+    useLeftoverCash: true,
+  };
+
+  const positions: Position[] = [
+    { id: 'a', ticker: 'A', name: 'A', currency: 'CHF', unitPrice: 100, shares: 90, targetWeight: 0.5, fee: 0 },
+    { id: 'b', ticker: 'B', name: 'B', currency: 'USD', unitPrice: 50, shares: 100, targetWeight: 0.5, fee: 0 },
+  ];
+  const portfolio: Portfolio = { version: 1, name: 't', settings, positions };
+
+  it('never sells, whatever the portfolio setting says', () => {
+    const { result } = planPurchase(portfolio, 5000);
+    expect(result.positions.every((p) => p.tradeShares >= 0)).toBe(true);
+  });
+
+  it('spends no more than the amount offered', () => {
+    for (const amount of [1, 137.5, 999, 5000, 250_000]) {
+      const { result } = planPurchase(portfolio, amount);
+      const spent = result.positions.reduce((a, p) => a + p.tradeValueBase, 0);
+      expect(spent + result.feesTotal, `amount=${amount}`).toBeLessThanOrEqual(amount + 1e-9);
+    }
+  });
+
+  it('treats a missing or negative amount as nothing to spend', () => {
+    for (const amount of [0, -50, NaN]) {
+      const { result } = planPurchase(portfolio, amount);
+      expect(result.positions.every((p) => p.tradeShares === 0), `amount=${amount}`).toBe(true);
+    }
+  });
+
+  it('adds the bought shares to the holdings', () => {
+    const { result } = planPurchase(portfolio, 5000);
+    const after = applyPurchase(portfolio, result);
+    for (const p of after.positions) {
+      const planned = result.positions.find((x) => x.id === p.id)!;
+      const before = positions.find((x) => x.id === p.id)!;
+      expect(p.shares).toBe(before.shares + planned.tradeShares);
+    }
+  });
+
+  it('keeps what could not be spent as cash to invest, rounded to money', () => {
+    const { result } = planPurchase(portfolio, 5000);
+    const after = applyPurchase(portfolio, result);
+    expect(after.settings.cash).toBeCloseTo(result.cashRemaining, 2);
+    expect(after.settings.cash).toBeGreaterThanOrEqual(0);
+    // No float tail: this value goes straight into a visible cash field.
+    expect(after.settings.cash * 100).toBeCloseTo(Math.round(after.settings.cash * 100), 9);
+  });
+
+  it('grows the portfolio by exactly what was spent', () => {
+    const before = calculate(portfolio).currentTotal;
+    const { result } = planPurchase(portfolio, 5000);
+    const spent = result.positions.reduce((a, p) => a + p.tradeValueBase, 0);
+    const after = calculate(applyPurchase(portfolio, result)).currentTotal;
+    expect(after).toBeCloseTo(before + spent, 6);
+  });
+
+  it('leaves the original portfolio untouched', () => {
+    const snapshot = JSON.stringify(portfolio);
+    const { result } = planPurchase(portfolio, 5000);
+    applyPurchase(portfolio, result);
+    expect(JSON.stringify(portfolio)).toBe(snapshot);
+  });
+
+  it('restores the portfolio\'s own rebalancing setting after saving', () => {
+    const { result } = planPurchase(portfolio, 5000);
+    const after = applyPurchase(portfolio, result);
+    expect(after.settings.allowSell).toBe(true);
+  });
+
+  it('has nothing left to buy when the leftover cannot cover a share', () => {
+    const { result } = planPurchase(portfolio, 5000);
+    const after = applyPurchase(portfolio, result);
+    const second = planPurchase(after, after.settings.cash);
+    expect(second.result.positions.every((p) => p.tradeShares === 0)).toBe(true);
+  });
+
+  it('moves the split toward the target', () => {
+    // A is underweight (9000 vs 4252.50 for B), so new money should favour it.
+    const { result } = planPurchase(portfolio, 5000);
+    const after = calculate(applyPurchase(portfolio, result));
+    for (const p of after.positions) {
+      const was = result.positions.find((x) => x.id === p.id)!;
+      expect(Math.abs(p.driftWeight)).toBeLessThanOrEqual(Math.abs(was.driftWeight) + 1e-9);
+    }
   });
 });

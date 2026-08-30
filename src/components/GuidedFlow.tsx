@@ -13,6 +13,7 @@ export function GuidedFlow({
   onSettings,
   onExportCsv,
   onAdvanced,
+  onBuy,
 }: {
   portfolio: Portfolio;
   result: CalcResult;
@@ -20,6 +21,7 @@ export function GuidedFlow({
   onSettings: (next: Settings) => void;
   onExportCsv: () => void;
   onAdvanced: () => void;
+  onBuy: () => void;
 }) {
   const [step, setStep] = useState(0);
   const [furthest, setFurthest] = useState(0);
@@ -72,6 +74,7 @@ export function GuidedFlow({
           onBack={() => go(2)}
           onExportCsv={onExportCsv}
           onAdvanced={onAdvanced}
+          onBuy={onBuy}
         />
       )}
     </div>
