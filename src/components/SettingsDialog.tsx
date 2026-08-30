@@ -13,15 +13,11 @@ export function SettingsDialog({
   portfolio,
   onChange,
   onClose,
-  onRefreshFx,
-  fxStatus,
 }: {
   open: boolean;
   portfolio: Portfolio;
   onChange: (settings: Settings) => void;
   onClose: () => void;
-  onRefreshFx: () => void;
-  fxStatus: 'idle' | 'loading' | { asOf: string } | { error: string };
 }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -109,12 +105,7 @@ export function SettingsDialog({
         </header>
 
         <div className="px-5 py-5">
-          <SettingsPanel
-            portfolio={portfolio}
-            onChange={onChange}
-            onRefreshFx={onRefreshFx}
-            fxStatus={fxStatus}
-          />
+          <SettingsPanel portfolio={portfolio} onChange={onChange} />
         </div>
 
         <footer className="flex items-center justify-end rounded-b-[var(--r-xl)] border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-3.5">

@@ -23,32 +23,50 @@ function ActionChip({ action }: { action: 'buy' | 'sell' | 'hold' }) {
   );
 }
 
+
 export function TradePlan({
   result,
   currency,
   onExportCsv,
-  onBuy,
 }: {
   result: CalcResult;
   currency: string;
   onExportCsv: () => void;
-  onBuy: () => void;
 }) {
   const trades = result.positions.filter((p) => p.tradeShares !== 0);
+
+  // The same currency list the Cash to invest section shows — base, every
+  // position currency, and anything still holding a balance — so a currency
+  // never appears in one table and not the other.
+  const cashRows = [
+    ...new Set([
+      ...Object.keys(result.fxRatesUsed),
+      ...Object.keys(result.cashBalances),
+      ...Object.keys(result.cashRemainingByCurrency),
+    ]),
+  ]
+    .sort((a, b) => (a === currency ? -1 : b === currency ? 1 : a.localeCompare(b)))
+    .map((code) => {
+      const before = result.cashBalances[code] ?? 0;
+      const left = result.cashRemainingByCurrency[code] ?? 0;
+      const rate = result.fxRatesUsed[code] ?? 1;
+      return {
+        code,
+        before,
+        used: Math.max(0, before - left),
+        left,
+        leftBase: left * rate,
+      };
+    });
 
   return (
     <Section
       title="Trade plan"
       description="What to place with your broker to reach the target allocation."
       actions={
-        <>
-          <button className="btn" onClick={onBuy} disabled={result.positions.length === 0}>
-            Buy shares…
-          </button>
-          <button className="btn" onClick={onExportCsv} disabled={result.positions.length === 0}>
-            ↓ Export CSV
-          </button>
-        </>
+        <button className="btn" onClick={onExportCsv} disabled={result.positions.length === 0}>
+          ↓ Export CSV
+        </button>
       }
     >
       {result.positions.length === 0 ? (
@@ -197,6 +215,65 @@ export function TradePlan({
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* What is left of each cash balance once the plan is executed. */}
+          <div className="border-t border-[var(--border)] px-4 py-4 sm:px-5">
+            <h3 className="text-sm font-semibold">Cash left after the plan</h3>
+            <p className="mt-0.5 text-xs text-[var(--ink-3)]">
+              Each balance after the purchases, their fees and any currency conversion.
+            </p>
+            <div className="scroll-x mt-3">
+              <table className="w-full min-w-[34rem] border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="th th-left w-[7rem]">Currency</th>
+                    <th className="th w-[10rem]">Before</th>
+                    <th className="th w-[10rem]">Used</th>
+                    <th className="th w-[10rem]">Left</th>
+                    <th className="th w-[10rem]">Left in {currency}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cashRows.map((row) => (
+                    <tr key={row.code} className="border-b border-[var(--border)]">
+                      <td className="td td-left">
+                        <span className="num font-semibold">{row.code}</span>
+                      </td>
+                      <td className="td num text-[var(--ink-2)]">{formatMoney(row.before)}</td>
+                      <td className="td num">
+                        {row.used > 1e-9 ? `−${formatMoney(row.used)}` : '—'}
+                      </td>
+                      <td
+                        className="td num font-semibold"
+                        style={{ color: row.left <= 1e-9 ? 'var(--ink-3)' : undefined }}
+                      >
+                        {formatMoney(row.left)}
+                      </td>
+                      <td className="td num text-[var(--ink-2)]">
+                        {formatMoney(row.leftBase)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-[var(--surface-2)] font-semibold">
+                    <td className="td td-left">Total</td>
+                    <td className="td" />
+                    <td className="td" />
+                    <td className="td" />
+                    <td className="td num">
+                      {formatMoney(cashRows.reduce((a, r) => a + r.leftBase, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            {result.conversionCost > 1e-6 && (
+              <p className="mt-2 text-xs text-[var(--ink-3)]">
+                Includes {formatMoney(result.conversionCost, currency)} of currency conversion.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-[var(--border)] px-4 py-3 text-xs text-[var(--ink-2)] sm:px-5">

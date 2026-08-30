@@ -153,10 +153,17 @@ export function settleBalances(
   for (const [code, amount] of Object.entries(settings.cashBalances ?? {})) {
     out[code] = Number.isFinite(amount) && amount > 0 ? amount : 0;
   }
+  // A currency with no balance can still receive sale proceeds.
+  for (const code of Object.keys(spend)) out[code] ??= 0;
 
   let drawBase = conversionCost;
   for (const [code, amount] of Object.entries(spend)) {
-    if (!(amount > 0)) continue;
+    if (amount < 0) {
+      // Proceeds from a sale land in that currency.
+      out[code] = (out[code] ?? 0) - amount;
+      continue;
+    }
+    if (amount === 0) continue;
     const native = Math.min(amount, out[code] ?? 0);
     if (native > 0) out[code] = (out[code] ?? 0) - native;
     drawBase += (amount - native) * fxRate(settings, code);
@@ -222,15 +229,20 @@ export function calculate(portfolio: Portfolio): CalcResult {
    * What a plan spends in each currency, in that currency's own units, fees
    * included — the input to the conversion cost.
    */
-  const spendOf = (ps: TradePlan[], tradedOnly: boolean): Record<string, number> => {
+  const spendOf = (ps: TradePlan[]): Record<string, number> => {
     const spend: Record<string, number> = {};
     base.forEach((b, i) => {
       const code = b.p.currency.toUpperCase();
       const rate = fxRate(settings, b.p.currency);
+      // Signed: a sell is negative, i.e. proceeds flowing back into that
+      // currency. Dropping them would settle the gross buys instead of the net.
       const value = rate > 0 ? ps[i].tradeValueBase / rate : 0;
-      if (value > 0) spend[code] = (spend[code] ?? 0) + value;
-      const charged = !b.p.locked && (!tradedOnly || ps[i].tradeShares !== 0);
-      if (charged && b.p.fee > 0) spend[code] = (spend[code] ?? 0) + b.p.fee;
+      if (value !== 0) spend[code] = (spend[code] ?? 0) + value;
+      // Fees follow the same rule as `feesTotal`: charged only where a trade
+      // actually happens, whatever the fee mode reserved up front.
+      if (!b.p.locked && ps[i].tradeShares !== 0 && b.p.fee > 0) {
+        spend[code] = (spend[code] ?? 0) + b.p.fee;
+      }
     });
     return spend;
   };
@@ -279,10 +291,7 @@ export function calculate(portfolio: Portfolio): CalcResult {
     );
     const nextFees =
       settings.feeMode === 'traded' ? tradableFees(tradedIds) : feesTotal;
-    const nextConversion = conversionCostFor(
-      settings,
-      spendOf(plans, settings.feeMode === 'traded'),
-    );
+    const nextConversion = conversionCostFor(settings, spendOf(plans));
     const settled =
       Math.abs(nextFees - feesTotal) < 1e-9 &&
       Math.abs(nextConversion.cost - conversionCost) < 1e-9;
@@ -304,7 +313,7 @@ export function calculate(portfolio: Portfolio): CalcResult {
     const spendableNow = () =>
       cash -
       tradableFees(new Set(base.filter((_b, i) => plans[i].tradeShares !== 0).map((b) => b.p.id))) -
-      conversionCostFor(settings, spendOf(plans, true)).cost -
+      conversionCostFor(settings, spendOf(plans)).cost -
       sum(plans.map((pl) => pl.tradeValueBase));
     let remaining = spendableNow();
 
@@ -349,8 +358,7 @@ export function calculate(portfolio: Portfolio): CalcResult {
   // the share least — until the plan fits the cash.
   const incurredFees = () =>
     tradableFees(new Set(base.filter((_b, i) => plans[i].tradeShares !== 0).map((b) => b.p.id)));
-  const incurredConversion = () =>
-    conversionCostFor(settings, spendOf(plans, settings.feeMode === 'traded'));
+  const incurredConversion = () => conversionCostFor(settings, spendOf(plans));
 
   {
     const remainingNow = () =>
@@ -387,10 +395,10 @@ export function calculate(portfolio: Portfolio): CalcResult {
   const finalConversion = incurredConversion();
   conversionCost = finalConversion.cost;
   converted = finalConversion.converted;
-  const finalSpend = spendOf(plans, settings.feeMode === 'traded');
+  const finalSpend = spendOf(plans);
 
   const chargedFee = (p: Position, plan: TradePlan): number =>
-    p.locked || (settings.feeMode === 'traded' && plan.tradeShares === 0) ? 0 : p.fee;
+    p.locked || plan.tradeShares === 0 ? 0 : p.fee;
 
   const results: PositionResult[] = base.map((b, i) => {
     const plan = plans[i];
@@ -480,6 +488,15 @@ export function calculate(portfolio: Portfolio): CalcResult {
     feesReserved,
     investable,
     cashBalances: { ...(settings.cashBalances ?? {}) },
+    fxRatesUsed: Object.fromEntries(
+      [
+        ...new Set([
+          settings.baseCurrency.toUpperCase(),
+          ...positions.map((p) => p.currency.toUpperCase()),
+          ...Object.keys(settings.cashBalances ?? {}),
+        ]),
+      ].map((code) => [code, fxRate(settings, code)]),
+    ),
     cashRemainingByCurrency,
     conversionCost,
     converted,
@@ -542,67 +559,6 @@ function fmtShort(v: number): string {
   return v.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-
-/**
- * The plan for spending a specific amount of cash on shares.
- *
- * Always buy-only: the question "what can I buy for this much" has no room for
- * selling, whatever the portfolio's own rebalancing setting says. Every other
- * setting — rounding, fees, leftover cash — is honoured, so the numbers agree
- * with the dashboard.
- */
-export function planPurchase(
-  portfolio: Portfolio,
-  amount: number,
-): { portfolio: Portfolio; result: CalcResult } {
-  const usable = Number.isFinite(amount) && amount > 0 ? amount : 0;
-  const scoped: Portfolio = {
-    ...portfolio,
-    settings: {
-      ...portfolio.settings,
-      // The amount is offered in the base currency, so it is modelled as a
-      // single base-currency balance; conversion costs then apply exactly as
-      // they would for cash actually held that way.
-      cashBalances: { [portfolio.settings.baseCurrency.toUpperCase()]: usable },
-      allowSell: false,
-    },
-  };
-  return { portfolio: scoped, result: calculate(scoped) };
-}
-
-
-/**
- * Records a purchase: the bought shares join the holdings, and whatever the
- * plan could not spend stays as cash to invest.
- *
- * Returns a new portfolio; the input is never mutated.
- */
-export function applyPurchase(portfolio: Portfolio, result: CalcResult): Portfolio {
-  const bought = new Map(result.positions.map((p) => [p.id, p.tradeShares]));
-  return {
-    ...portfolio,
-    settings: {
-      ...portfolio.settings,
-      // The leftover the plan reported is exactly what the dialog promised to
-      // keep, so that is what gets stored. Balances the plan never touched are
-      // carried through untouched. Two decimals, because these land in visible
-      // cash fields.
-      cashBalances: {
-        ...portfolio.settings.cashBalances,
-        ...Object.fromEntries(
-          Object.entries(result.cashRemainingByCurrency).map(([code, amount]) => [
-            code,
-            Math.max(0, roundTo(amount, 2)),
-          ]),
-        ),
-      },
-    },
-    positions: portfolio.positions.map((p) => {
-      const delta = bought.get(p.id);
-      return delta ? { ...p, shares: roundTo(p.shares + delta, 6) } : p;
-    }),
-  };
-}
 
 /** Scales all target weights so they sum to exactly 100%. */
 export function normalizeWeights(positions: Position[]): Position[] {

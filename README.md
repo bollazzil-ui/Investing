@@ -7,73 +7,38 @@ allocation, given the cash you want to add and the trading fees you will pay.
 Unlike the spreadsheet it is not limited to three ETFs — positions are added,
 removed, reordered and reweighted freely.
 
-## The main flow
+## The dashboard
 
-**Guided** mode walks the question end to end in four steps:
+One view, full width, in this order:
 
-1. **Your money** — how much you are investing, and whether the plan may sell
-   (buy-only is the default: new money goes where it is most needed, nothing is
-   sold, no extra fees, no tax events).
-2. **Your products** — add anything new, remove what you no longer want. A
-   brand-new product is simply one with 0 shares held.
-3. **Your split** — the target share for each product, on sliders that keep the
-   total at 100% for you.
-4. **What to buy** — the answer: *buy 131 shares of EIMI, 95 of SWDA, 191 of
-   IUSN*, with the amount in both currencies, what you will hold afterwards, and
-   where the split lands.
+1. **Positions** — every holding: price, shares, value, actual vs. target weight,
+   drift and fee. Add, remove, reorder, reweight.
+2. **Cash to invest** — how much money you have, by currency (below).
+3. **Allocation** — composition today, target, and after the plan, plus drift.
+4. **Trade plan** — what to buy or sell, and what cash is left afterwards.
 
-![Guided flow](docs/screenshot-guided.png)
+Calculation settings live in a dialog behind **Settings** in the header, so
+nothing competes with the tables for width.
 
-### Buying, in one dialog
+![Dashboard](docs/screenshot-light.png)
 
-*Buy shares* — in the header, and on both views — answers the narrower
-question directly: **how much do you have to spend, and what does it buy?**
+## Cash to invest
 
-![Buy shares dialog](docs/screenshot-buy.png)
+The section between *Positions* and *Allocation* is where the money goes in. It
+holds one row per currency, and the rows look after themselves:
 
-Type an amount, press **OK**, and the share counts appear with what they cost,
-the fees, and what is left over. **Save purchase** records it: the bought shares
-join your holdings, the leftover stays as cash to invest, and the whole
-dashboard updates. **Close without saving** — or Escape, or clicking outside —
-changes nothing.
+- the **base currency**, always first;
+- **every currency your positions are priced in** — add a GBP-priced ETF and a
+  GBP row appears on its own;
+- **any currency still holding cash**, so money is never hidden when the last
+  position using it is removed.
 
-The dialog is always buy-only: "what can I buy for this much" has no room for
-selling, whatever the portfolio's own rebalancing setting says. Every other
-setting — rounding, fees, leftover cash — is honoured, so its numbers agree with
-the dashboard. Editing the amount after pressing OK marks the plan stale and
-blocks saving until you recalculate, so what you save is always what you saw.
+Each row carries the amount available, its **exchange rate** (editable right
+there — the rates are not in Settings), and the value in the base currency. A
+currency the plan has to convert into is marked, a currency with no rate yet is
+flagged in red, and the footer totals the pooled budget.
 
-Saving records the purchase in the app; placing the orders with your broker is
-still up to you.
-
-**Advanced** mode is the same engine as a single dense dashboard — every
-position and intermediate figure at once, across the full width of the window.
-The calculation settings live in a dialog behind **Settings** in the header, so
-nothing competes with the tables for space. The mode toggle is in the header and
-your choice is remembered.
-
-![Advanced view](docs/screenshot-light.png)
-
----
-
-## Design
-
-A modern-fintech surface treatment: white cards floating on a softly tinted
-page, generous radii, layered shadows, and gradient accents on the primary
-action and the headline figure. The whole look lives in the token block at the
-top of `src/index.css` — every component reads those CSS variables, so the theme
-can be retuned in one place without touching a component.
-
-- **Typeface** is [Inter](https://rsms.me/inter/) via Google Fonts, with the
-  system UI stack as fallback. Figures use tabular numerals (`.num`) so columns
-  of money line up; letter-spacing is never applied to numbers.
-- **Colour** is the same colourblind-safety validated palette as before —
-  categorical hues for products, a blue/red diverging pair for drift, and
-  reserved status colours. It was re-validated against the new card surfaces.
-- **Status is never colour alone.** Buy and sell are stated with an icon and a
-  word on a chip; the coloured rail beside a product carries its identity, and
-  the card itself stays neutral so the two never compete.
-- Respects `prefers-reduced-motion`, and prints without the chrome.
+![Cash to invest](docs/screenshot-cash.png)
 
 ## Quick start
 
@@ -147,15 +112,15 @@ Three guarantees hold whatever the settings:
 
 ### Money in several currencies
 
-Cash to invest is held **per currency** — `1'000 CHF + 500 USD` — and every
-balance is editable under *Settings → Cash to invest*.
+Cash to invest is held **per currency** — `1'000 CHF + 500 USD` — edited in the
+*Cash to invest* section.
 
 The balances form **one pooled budget**: converted at your exchange rates into a
 single investable amount, so USD cash can fund a EUR purchase. What makes that
 honest is that converting is not free — the part of a purchase your matching
 balance cannot cover is charged a **spread** (0.25% by default) plus an optional
-**flat fee per currency converted**. Both are set under *Settings → Currency
-conversion*, and the plan says so when it has to convert:
+**flat fee per currency converted**. Both are set under *Settings → Currency conversion*, and the plan says so when
+it has to convert:
 
 > The plan buys more EUR and USD than those cash balances hold, so 0.60 CHF of
 > currency conversion is included. Add cash in those currencies to avoid it.
@@ -201,10 +166,6 @@ nothing.
 | **Fractional shares** | Skips whole-share rounding entirely. |
 | **Use up the leftover cash** | After the main plan, buy extra whole shares of whatever is still furthest below target. |
 | **Hold — never trade** (per position) | The position counts toward the total but is never bought or sold, and is charged no fee. |
-
-`planPurchase` and `applyPurchase` in `calc.ts` are the pure functions behind
-*Buy shares*: the first works out what an amount buys, the second folds the
-result back into the portfolio. Neither mutates its input.
 
 The app warns when target weights do not sum to 100%, when the plan needs more
 cash than is available, and when a price or exchange rate is missing.
@@ -363,12 +324,10 @@ src/
     format.ts           Locale-aware formatting and parsing
     colors.ts           Categorical colour assignment
   components/
-    guided/             The four-step flow
+    CashToInvest        Per-currency cash and exchange rates
     AddProductDialog    ISIN/ticker lookup dialog
     SettingsDialog      Calculation settings
-    CashBalances        Per-currency cash editor
-    BuyDialog           "What does this much money buy?"
-    *.tsx               The advanced dashboard
+    *.tsx               The dashboard sections
   App.tsx               State, wiring, import/export
 ```
 

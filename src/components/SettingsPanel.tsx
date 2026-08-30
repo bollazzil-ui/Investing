@@ -1,27 +1,15 @@
-import { useMemo } from 'react';
 import type { Portfolio, Settings } from '../types';
 import { NumberField, SegmentedControl, TextField, Toggle } from './primitives';
-import { CashBalances } from './CashBalances';
 
 export function SettingsPanel({
   portfolio,
   onChange,
-  onRefreshFx,
-  fxStatus,
 }: {
   portfolio: Portfolio;
   onChange: (settings: Settings) => void;
-  onRefreshFx: () => void;
-  fxStatus: 'idle' | 'loading' | { asOf: string } | { error: string };
 }) {
-  const { settings, positions } = portfolio;
+  const { settings } = portfolio;
   const base = settings.baseCurrency.toUpperCase();
-
-  // Only the currencies actually used by a position need a rate.
-  const currencies = useMemo(() => {
-    const set = new Set(positions.map((p) => p.currency.toUpperCase()).filter((c) => c && c !== base));
-    return [...set].sort();
-  }, [positions, base]);
 
   const set = (patch: Partial<Settings>) => onChange({ ...settings, ...patch });
 
@@ -37,57 +25,10 @@ export function SettingsPanel({
             className="uppercase"
           />
         </div>
-        <p className="mt-1 text-[0.6875rem] text-[var(--ink-3)]">
-          Everything is reported in this currency.
+        <p className="mt-1 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
+          Everything is reported in this currency. Cash balances and exchange rates are edited in
+          the <strong>Cash to invest</strong> section.
         </p>
-      </div>
-
-      <div className="border-t border-[var(--border)] pt-4">
-        <span className="label">Cash to invest</span>
-        <CashBalances settings={settings} onChange={onChange} compact />
-      </div>
-
-      <div className="border-t border-[var(--border)] pt-4">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="label !mb-0">Exchange rates</span>
-          <button
-            className="btn !px-2 !py-0.5 text-xs"
-            onClick={onRefreshFx}
-            disabled={fxStatus === 'loading' || currencies.length === 0}
-          >
-            {fxStatus === 'loading' ? 'Fetching…' : 'Fetch live'}
-          </button>
-        </div>
-        {currencies.length === 0 ? (
-          <p className="text-xs text-[var(--ink-3)]">
-            Every position is already in {base}; no rates needed.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {currencies.map((code) => (
-              <div key={code} className="flex items-center gap-2">
-                <span className="num w-24 shrink-0 text-xs text-[var(--ink-2)]">1 {code} =</span>
-                <NumberField
-                  value={settings.fxRates[code] ?? 1}
-                  onChange={(v) => set({ fxRates: { ...settings.fxRates, [code]: v } })}
-                  suffix={base}
-                  min={0}
-                  ariaLabel={`Exchange rate ${code} to ${base}`}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {typeof fxStatus === 'object' && 'asOf' in fxStatus && (
-          <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--good)' }}>
-            ✓ ECB reference rates from {fxStatus.asOf}
-          </p>
-        )}
-        {typeof fxStatus === 'object' && 'error' in fxStatus && (
-          <p className="mt-1.5 text-[0.6875rem]" style={{ color: 'var(--critical)' }}>
-            ✕ {fxStatus.error}
-          </p>
-        )}
       </div>
 
       <div className="border-t border-[var(--border)] pt-4">

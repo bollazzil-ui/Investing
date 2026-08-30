@@ -136,23 +136,3 @@ export function downloadFile(filename: string, contents: string, mime: string): 
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
-
-const MODE_KEY = 'aufteilungsrechner.mode';
-
-export type ViewMode = 'guided' | 'advanced';
-
-export function loadMode(): ViewMode {
-  try {
-    return localStorage.getItem(MODE_KEY) === 'advanced' ? 'advanced' : 'guided';
-  } catch {
-    return 'guided';
-  }
-}
-
-export function saveMode(mode: ViewMode): void {
-  try {
-    localStorage.setItem(MODE_KEY, mode);
-  } catch {
-    /* ignore */
-  }
-}

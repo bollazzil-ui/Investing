@@ -4,10 +4,8 @@ import { calculate } from './lib/calc';
 import {
   downloadFile,
   hydrate,
-  loadMode,
   loadPortfolio,
   loadTheme,
-  saveMode,
   savePortfolio,
   saveTheme,
   type Theme,
@@ -18,11 +16,10 @@ import { SAMPLE_PORTFOLIO } from './lib/sample';
 import { SummaryTiles } from './components/SummaryTiles';
 import { PositionsTable } from './components/PositionsTable';
 import { SettingsDialog } from './components/SettingsDialog';
+import { CashToInvest } from './components/CashToInvest';
 import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
-import { GuidedFlow } from './components/GuidedFlow';
-import { BuyDialog } from './components/BuyDialog';
 import { RefreshDialog } from './components/RefreshDialog';
 import { REFRESH_TIMEOUT_MS, refreshAll, type RefreshReport } from './lib/refresh';
 
@@ -31,12 +28,10 @@ type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefin
 
 export default function App() {
   const [portfolio, setPortfolio] = useState<Portfolio>(loadPortfolio);
-  const [mode, setMode] = useState<'guided' | 'advanced'>(loadMode);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fxStatus, setFxStatus] = useState<FxStatus>('idle');
   const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>({});
   const [toast, setToast] = useState<string | null>(null);
-  const [buying, setBuying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshReport, setRefreshReport] = useState<RefreshReport | null>(null);
@@ -50,10 +45,6 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     saveTheme(theme);
   }, [theme]);
-
-  useEffect(() => {
-    saveMode(mode);
-  }, [mode]);
 
   useEffect(() => {
     if (!toast) return;
@@ -255,32 +246,6 @@ export default function App() {
               )}
               {refreshing ? 'Refreshing…' : 'Refresh prices'}
             </button>
-            <button className="btn btn-primary" onClick={() => setBuying(true)}>
-              Buy shares
-            </button>
-            <div
-              role="radiogroup"
-              aria-label="View mode"
-              className="mr-1 inline-flex rounded-[var(--r-sm)] border border-[var(--border)] bg-[var(--surface-2)] p-1"
-            >
-              {(['guided', 'advanced'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === m}
-                  onClick={() => setMode(m)}
-                  className="rounded-[0.4rem] px-2.5 py-1 text-xs font-[550] capitalize transition-all duration-150"
-                  style={{
-                    background: mode === m ? 'var(--surface-1)' : 'transparent',
-                    color: mode === m ? 'var(--ink-1)' : 'var(--ink-3)',
-                    boxShadow: mode === m ? 'var(--shadow-card)' : 'none',
-                  }}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
             <button className="btn" onClick={() => fileInput.current?.click()}>
               ↑ Import
             </button>
@@ -302,23 +267,7 @@ export default function App() {
         </div>
       </header>
 
-      <main
-        className={`mx-auto space-y-4 px-4 py-5 sm:px-6 ${
-          mode === 'guided' ? 'max-w-5xl' : 'max-w-[100rem]'
-        }`}
-      >
-        {mode === 'guided' ? (
-          <GuidedFlow
-            portfolio={portfolio}
-            result={result}
-            onPositions={setPositions}
-            onSettings={setSettings}
-            onExportCsv={exportCsv}
-            onAdvanced={() => setMode('advanced')}
-            onBuy={() => setBuying(true)}
-          />
-        ) : (
-          <>
+      <main className="mx-auto max-w-[100rem] space-y-4 px-4 py-5 sm:px-6">
         <SummaryTiles result={result} currency={portfolio.settings.baseCurrency} />
 
         {result.warnings.length > 0 && (
@@ -345,6 +294,13 @@ export default function App() {
           onRefreshQuote={refreshQuote}
           quoteStatus={quoteStatus}
         />
+        <CashToInvest
+          portfolio={portfolio}
+          result={result}
+          onChange={setSettings}
+          onRefreshFx={refreshFx}
+          fxStatus={fxStatus}
+        />
         <AllocationChart
           result={result}
           currency={portfolio.settings.baseCurrency}
@@ -355,34 +311,19 @@ export default function App() {
           result={result}
           currency={portfolio.settings.baseCurrency}
           onExportCsv={exportCsv}
-          onBuy={() => setBuying(true)}
         />
-          </>
-        )}
 
         <SettingsDialog
           open={settingsOpen}
           portfolio={portfolio}
           onChange={setSettings}
           onClose={() => setSettingsOpen(false)}
-          onRefreshFx={refreshFx}
-          fxStatus={fxStatus}
         />
 
         <RefreshDialog
           report={refreshReport}
           baseCurrency={portfolio.settings.baseCurrency}
           onClose={() => setRefreshReport(null)}
-        />
-
-        <BuyDialog
-          open={buying}
-          portfolio={portfolio}
-          onClose={() => setBuying(false)}
-          onSave={(next) => {
-            setPortfolio(next);
-            setToast('Purchase saved — your holdings and cash are updated.');
-          }}
         />
 
         <footer className="pb-8 pt-3 text-center text-xs text-[var(--ink-3)]">

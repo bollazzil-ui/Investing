@@ -145,6 +145,11 @@ export interface CalcResult {
   investable: number;
   /** What each cash balance holds, in its own currency. */
   cashBalances: Record<string, number>;
+  /**
+   * The rate each currency was valued at, in base per 1 unit. Reported so the
+   * UI never has to reverse-engineer a rate out of the position figures.
+   */
+  fxRatesUsed: Record<string, number>;
   /** What is left of each balance after the plan, in its own currency. */
   cashRemainingByCurrency: Record<string, number>;
   /** Cost of converting between currencies to fund the plan, in the base currency. */
