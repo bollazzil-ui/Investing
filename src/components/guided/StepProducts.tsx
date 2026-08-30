@@ -1,24 +1,10 @@
 import { useState } from 'react';
 import type { CalcResult, Position, Settings } from '../../types';
-import { formatMoney, uid } from '../../lib/format';
+import { formatMoney } from '../../lib/format';
 import { seriesColor } from '../../lib/colors';
 import { NumberField, TextField } from '../primitives';
+import { AddProductDialog } from '../AddProductDialog';
 import { StepNav } from './Stepper';
-
-/**
- * A few ready-made rows, so the first product is one click rather than six
- * fields. Identity only — price, shares and fee stay with the user's own
- * defaults rather than being reset to zero.
- */
-type Preset = Pick<Position, 'ticker' | 'name' | 'isin' | 'currency' | 'quoteSymbol'>;
-
-const PRESET_PRODUCTS: Preset[] = [
-  { ticker: 'SWDA', name: 'iShares Core MSCI World', isin: 'IE00B4L5Y983', currency: 'USD', quoteSymbol: 'swda.uk' },
-  { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', isin: 'IE00BKM4GZ66', currency: 'USD', quoteSymbol: 'eimi.uk' },
-  { ticker: 'IUSN', name: 'iShares MSCI World Small Cap', isin: 'IE00BF4RFH31', currency: 'EUR', quoteSymbol: 'iusn.de' },
-  { ticker: 'VWRL', name: 'Vanguard FTSE All-World', isin: 'IE00B3RBWM25', currency: 'USD', quoteSymbol: 'vwrl.uk' },
-  { ticker: 'AGGH', name: 'iShares Core Global Aggregate Bond', isin: 'IE00BDBRDM35', currency: 'USD', quoteSymbol: 'aggh.uk' },
-];
 
 export function StepProducts({
   positions,
@@ -37,27 +23,12 @@ export function StepProducts({
 }) {
   const [adding, setAdding] = useState(false);
   const base = settings.baseCurrency;
+  const unallocated = Math.max(0, 1 - positions.reduce((a, p) => a + p.targetWeight, 0));
 
   function update(id: string, patch: Partial<Position>) {
     onChange(positions.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
-  function add(seed?: Preset) {
-    const used = positions.reduce((a, p) => a + p.targetWeight, 0);
-    const created: Position = {
-      id: uid(),
-      ticker: '',
-      name: '',
-      currency: base,
-      unitPrice: 0,
-      shares: 0,
-      fee: positions.length > 0 ? positions[positions.length - 1].fee : 0,
-      ...seed,
-      targetWeight: Math.max(0, 1 - used),
-    };
-    onChange([...positions, created]);
-    setAdding(false);
-  }
 
   function remove(p: Position) {
     const label = p.ticker || p.name || 'this product';
@@ -67,9 +38,6 @@ export function StepProducts({
     onChange(positions.filter((x) => x.id !== p.id));
   }
 
-  const unusedPresets = PRESET_PRODUCTS.filter(
-    (preset) => !positions.some((p) => p.ticker.toUpperCase() === preset.ticker),
-  );
   const incomplete = positions.filter((p) => !(p.unitPrice > 0) || !p.ticker.trim());
 
   return (
@@ -186,35 +154,21 @@ export function StepProducts({
           })}
         </div>
 
-        {adding ? (
-          <div className="mt-3 rounded-xl border-2 border-dashed border-[var(--border-strong)] p-4">
-            <p className="text-sm font-medium">Add a product</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button className="btn btn-primary" onClick={() => add()}>
-                Blank product
-              </button>
-              {unusedPresets.map((preset) => (
-                <button key={preset.ticker} className="btn" onClick={() => add(preset)}>
-                  + {preset.ticker}
-                  <span className="text-[var(--ink-3)]">{preset.currency}</span>
-                </button>
-              ))}
-              <button className="btn btn-ghost" onClick={() => setAdding(false)}>
-                Cancel
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-[var(--ink-3)]">
-              Presets fill in the name and currency; you still enter the current price.
-            </p>
-          </div>
-        ) : (
-          <button
-            className="mt-3 w-full rounded-xl border-2 border-dashed border-[var(--border-strong)] px-4 py-4 text-sm font-medium text-[var(--ink-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            onClick={() => setAdding(true)}
-          >
-            + Add a product
-          </button>
-        )}
+        <button
+          className="mt-3 w-full rounded-xl border-2 border-dashed border-[var(--border-strong)] px-4 py-4 text-sm font-medium text-[var(--ink-2)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          onClick={() => setAdding(true)}
+        >
+          + Add a product
+        </button>
+
+        <AddProductDialog
+          open={adding}
+          onClose={() => setAdding(false)}
+          onAdd={(position) => onChange([...positions, position])}
+          baseCurrency={base}
+          defaultFee={positions.length > 0 ? positions[positions.length - 1].fee : 0}
+          suggestedWeight={unallocated}
+        />
       </div>
 
       <StepNav

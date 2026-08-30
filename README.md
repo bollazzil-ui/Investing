@@ -132,13 +132,33 @@ cash than is available, and when a price or exchange rate is missing.
 
 ## Adding and removing products
 
-In **guided** mode, *Add a product* offers a blank row or one of a few presets
-that fill in name, ISIN and currency; price, shares and fee keep your own
-defaults. Removing a product you still hold asks first.
+*Add a product* (guided) and *+ Add position* (advanced) both open the same
+dialog. Type an **ISIN or ticker**, leave the field, and the rest fills itself
+in:
 
-In **advanced** mode, *+ Add position* appends a row pre-filled with whatever
-target weight is still unallocated. Expand a row (▸) for full name, ISIN, quote
-symbol and the *hold* flag.
+![Add product dialog](docs/screenshot-add-product.png)
+
+1. An ISIN is **checked locally first** — the check digit is verified before any
+   request goes out, so a typo is caught immediately rather than coming back as
+   "not found".
+2. [OpenFIGI](https://www.openfigi.com/api) maps the code to a symbol, a name
+   and a listing exchange. One ISIN usually lists on several venues; the one
+   picked is whichever can be priced and has an unambiguous currency.
+3. Stooq supplies the last price for that symbol.
+
+Every field stays editable, and each carries a badge saying where its value came
+from — **✓ found** for something the lookup established, **⚠ check** for
+something inferred. Currency is always inferred: neither provider reports a
+trading currency, so it is derived from the listing exchange, and a venue that
+lists in several currencies (London especially) is left blank with a note rather
+than guessed.
+
+If a provider is unreachable or does not know the code, the dialog says so and
+the form stays fully usable by hand. Presets for a few common ETFs are there for
+when you have no code to hand. Removing a product you still hold asks first.
+
+Expand a row (▸) in advanced mode for full name, ISIN, quote symbol and the
+*hold* flag.
 
 - **Normalise to 100%** scales every target proportionally so they add up.
 - **Equal weights** gives every position `1/n`.
@@ -162,7 +182,13 @@ Rates are stored as *base currency per 1 unit of the foreign currency* —
 **Share prices** come from Stooq, which sends no CORS headers, so the browser
 cannot call it directly. The Vite dev server proxies `/api/stooq` for local use.
 To make *Fetch* work on a deployed build, put an equivalent proxy at that path.
-For example, as a Netlify redirect in `netlify.toml`:
+
+**Instrument lookup** uses OpenFIGI, which needs no key and is documented as
+CORS-enabled, so it is called directly. Should a browser refuse that call, the
+lookup retries once through `/api/openfigi` — proxied in dev, and worth
+configuring in production alongside the Stooq path.
+
+As Netlify redirects in `netlify.toml`:
 
 ```toml
 [[redirects]]
@@ -170,7 +196,16 @@ For example, as a Netlify redirect in `netlify.toml`:
   to = "https://stooq.com/:splat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/openfigi/*"
+  to = "https://api.openfigi.com/:splat"
+  status = 200
+  force = true
 ```
+
+OpenFIGI allows roughly 25 lookups a minute without an API key; the dialog
+reports rate limiting in plain words rather than failing silently.
 
 Stooq symbols carry an exchange suffix: `swda.uk`, `iusn.de`. Without a proxy
 the *Fetch* button reports that the service is unreachable and the price stays
@@ -202,8 +237,12 @@ src/
   types.ts              Domain model
   lib/
     calc.ts             The rebalancing engine (pure, no React)
+    isin.ts             ISIN shape and check-digit validation
+    lookup.ts           ISIN/ticker → product, and its response parsing
     calc.test.ts        Pinned to the spreadsheet's own numbers, plus the
                         affordability and leftover-cash guarantees
+    isin.test.ts        Check digits, against ten real ISINs
+    lookup.test.ts      Parsing and every failure path, on recorded responses
     quotes.ts           Optional FX and price fetching
     storage.ts          localStorage + import hydration
     exporters.ts        CSV / JSON output

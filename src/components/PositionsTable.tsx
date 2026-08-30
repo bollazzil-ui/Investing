@@ -4,6 +4,7 @@ import { formatMoney, formatPercent, formatSignedPercent, uid } from '../lib/for
 import { equalizeWeights, normalizeWeights } from '../lib/calc';
 import { seriesColor, isFoldedColor } from '../lib/colors';
 import { NumberField, Section, TextField } from './primitives';
+import { AddProductDialog } from './AddProductDialog';
 
 export function PositionsTable({
   portfolio,
@@ -19,6 +20,7 @@ export function PositionsTable({
   quoteStatus: Record<string, 'loading' | 'ok' | { error: string } | undefined>;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const { positions, settings } = portfolio;
   const base = settings.baseCurrency;
   const weightSum = result.targetWeightSum;
@@ -28,20 +30,9 @@ export function PositionsTable({
     onChange(positions.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
-  function addPosition() {
-    const remaining = Math.max(0, 1 - weightSum);
-    const created: Position = {
-      id: uid(),
-      ticker: '',
-      name: '',
-      currency: base,
-      unitPrice: 0,
-      shares: 0,
-      targetWeight: remaining,
-      fee: positions.length > 0 ? positions[positions.length - 1].fee : 0,
-    };
-    onChange([...positions, created]);
-    setExpanded(created.id);
+  function addPosition(position: Position) {
+    onChange([...positions, position]);
+    setExpanded(position.id);
   }
 
   function duplicate(p: Position) {
@@ -81,7 +72,7 @@ export function PositionsTable({
           >
             Normalise to 100%
           </button>
-          <button className="btn btn-primary" onClick={addPosition}>
+          <button className="btn btn-primary" onClick={() => setAdding(true)}>
             + Add position
           </button>
         </>
@@ -322,7 +313,7 @@ export function PositionsTable({
               <tr>
                 <td colSpan={10} className="px-5 py-12 text-center">
                   <p className="text-sm text-[var(--ink-2)]">No positions yet.</p>
-                  <button className="btn btn-primary mt-3" onClick={addPosition}>
+                  <button className="btn btn-primary mt-3" onClick={() => setAdding(true)}>
                     + Add your first position
                   </button>
                 </td>
@@ -349,6 +340,14 @@ export function PositionsTable({
           )}
         </table>
       </div>
+      <AddProductDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        onAdd={addPosition}
+        baseCurrency={base}
+        defaultFee={positions.length > 0 ? positions[positions.length - 1].fee : 0}
+        suggestedWeight={Math.max(0, 1 - weightSum)}
+      />
     </Section>
   );
 }
