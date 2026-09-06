@@ -1,0 +1,26 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Stooq sends no CORS headers, so the browser cannot call it directly; this
+# path is what src/lib/quotes.ts requests. `force` matters: without it the SPA
+# fallback below would answer first and hand back index.html with a 200.
+[[redirects]]
+  from = "/api/stooq/*"
+  to = "https://stooq.com/:splat"
+  status = 200
+  force = true
+
+# OpenFIGI is CORS-enabled and called directly; this is the fallback path the
+# instrument lookup retries on when a browser refuses the cross-origin call.
+[[redirects]]
+  from = "/api/openfigi/*"
+  to = "https://api.openfigi.com/:splat"
+  status = 200
+  force = true
+
+# Single-page app: every other path is the app itself. Must stay last.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

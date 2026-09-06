@@ -67,12 +67,51 @@ export interface QuoteResult {
 }
 
 /**
- * Fetches a last price from Stooq.
+ * Where the Stooq CSV endpoint is reachable from the browser.
  *
- * Stooq sends no CORS headers, so the browser cannot call it directly. The Vite
- * dev server proxies `/api/stooq` for local use; deploying this needs an
- * equivalent proxy (see README). Without one, this rejects and the UI falls
- * back to manual entry.
+ * Stooq sends no CORS headers, so a page can never call it directly — the
+ * request has to go through something same-origin. The default path is proxied
+ * by the Vite dev server and by `netlify.toml` on a deployed build; setting
+ * `VITE_STOOQ_PROXY` points it at a different proxy (an absolute URL works, as
+ * long as *that* host sends CORS headers).
+ */
+export const STOOQ_BASE = (
+  (import.meta.env?.VITE_STOOQ_PROXY as string | undefined)?.trim() || '/api/stooq'
+).replace(/\/+$/, '');
+
+/**
+ * Thrown when the quote request came back with something other than Stooq's
+ * CSV — almost always a static host answering the un-proxied `/api/stooq/...`
+ * with `index.html` and a 200, which would otherwise read as "unknown symbol"
+ * and send the user hunting for a typo that isn't there.
+ */
+export class QuoteProxyError extends Error {
+  constructor() {
+    super(
+      `The quote proxy at ${STOOQ_BASE} returned a page instead of price data, so it is not ` +
+        'forwarding to Stooq. Run the dev server, or configure the proxy on your deployment ' +
+        '(see README > Live quotes).',
+    );
+    this.name = 'QuoteProxyError';
+  }
+}
+
+/**
+ * Whether the header row is Stooq's, rather than some other CSV the proxy
+ * happened to return. An unknown *symbol* still has this header — Stooq fills
+ * the data columns with "N/D" — so this separates "wrong service" from
+ * "wrong ticker".
+ */
+function looksLikeStooqCsv(header: string[]): boolean {
+  return header.includes('close') && header.includes('symbol');
+}
+
+/**
+ * Fetches a last price from Stooq, via the proxy described on `STOOQ_BASE`.
+ *
+ * Rejects rather than guessing: a missing proxy, an unknown symbol and a
+ * market with no price for the symbol are three different messages, because
+ * the fix for each is different.
  */
 export async function fetchQuote(
   symbol: string,
@@ -82,15 +121,21 @@ export async function fetchQuote(
 ): Promise<QuoteResult> {
   const s = symbol.trim().toLowerCase();
   if (!s) throw new Error('No quote symbol set.');
-  const url = `/api/stooq/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
+  const url = `${STOOQ_BASE}/q/l/?s=${encodeURIComponent(s)}&f=sd2t2ohlcv&h&e=csv`;
 
   const res = await fetchImpl(url, { signal });
   if (!res.ok) throw new Error(`Quote service returned ${res.status}.`);
   const text = await res.text();
 
+  // A SPA host serves index.html for an unmatched path — with a 200, so `ok`
+  // above proves nothing about what actually answered.
+  if (/^\s*<(?:!doctype|html|\?xml)/i.test(text)) throw new QuoteProxyError();
+
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) throw new Error(`No data for "${symbol}".`);
   const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  if (!looksLikeStooqCsv(header)) throw new QuoteProxyError();
+
   const cells = lines[1].split(',').map((c) => c.trim());
   const get = (key: string) => {
     const i = header.indexOf(key);
@@ -101,8 +146,6 @@ export async function fetchQuote(
   if (!Number.isFinite(close) || close <= 0) {
     throw new Error(`"${symbol}" is not a known symbol, or the market has no price for it.`);
   }
-  return { symbol: s, price: close, asOf: get('date') };
+  const asOf = get('date');
+  return { symbol: s, price: close, asOf: asOf && asOf !== 'N/D' ? asOf : undefined };
 }
-
-/** True when live quotes can plausibly work (dev server or a configured proxy). */
-export const QUOTES_NEED_PROXY = true;

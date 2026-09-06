@@ -251,36 +251,33 @@ Rates are stored as *base currency per 1 unit of the foreign currency* —
 `1 USD = 0.8505 CHF`.
 
 **Share prices** come from Stooq, which sends no CORS headers, so the browser
-cannot call it directly. The Vite dev server proxies `/api/stooq` for local use.
-To make *Fetch* work on a deployed build, put an equivalent proxy at that path.
+cannot call it directly — the request goes through `/api/stooq`. That path is
+proxied in both places it needs to be, so there is nothing to configure:
+
+- **`npm run dev`** — the Vite dev server proxies it (`vite.config.ts`).
+- **A deployed build** — `netlify.toml` in the repo root forwards it, along
+  with `/api/openfigi` and the single-page-app fallback.
+
+Deploying somewhere other than Netlify means reproducing those two forwards in
+that host's own config (Vercel `rewrites`, an nginx `proxy_pass`, and so on).
+If your proxy lives at a different path, point the app at it with
+`VITE_STOOQ_PROXY` — see `.env.example`. An absolute URL works too, provided
+that host sends CORS headers.
 
 **Instrument lookup** uses OpenFIGI, which needs no key and is documented as
 CORS-enabled, so it is called directly. Should a browser refuse that call, the
-lookup retries once through `/api/openfigi` — proxied in dev, and worth
-configuring in production alongside the Stooq path.
-
-As Netlify redirects in `netlify.toml`:
-
-```toml
-[[redirects]]
-  from = "/api/stooq/*"
-  to = "https://stooq.com/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/api/openfigi/*"
-  to = "https://api.openfigi.com/:splat"
-  status = 200
-  force = true
-```
-
+lookup retries once through `/api/openfigi`, proxied in the same two places.
 OpenFIGI allows roughly 25 lookups a minute without an API key; the dialog
 reports rate limiting in plain words rather than failing silently.
 
-Stooq symbols carry an exchange suffix: `swda.uk`, `iusn.de`. Without a proxy
-the *Fetch* button reports that the service is unreachable and the price stays
-whatever you typed.
+Stooq symbols carry an exchange suffix: `swda.uk`, `iusn.de`.
+
+The three ways a quote fails are reported as three different messages, because
+the fix for each is different — an unknown symbol, a market with no price, and
+a proxy that is not forwarding. The last one is worth knowing about: a static
+host answers an unconfigured `/api/stooq/...` with the app's own HTML *and a
+200*, so the app checks that what came back is really Stooq CSV rather than
+reading the page as a bad ticker.
 
 ---
 

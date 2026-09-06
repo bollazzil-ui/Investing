@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fetchFxRates, fetchQuote } from './quotes';
+import { fetchFxRates, fetchQuote, STOOQ_BASE } from './quotes';
 
 function json(body: unknown, status = 200): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body } as Response;
@@ -75,5 +75,39 @@ describe('fetchQuote', () => {
 
   it('surfaces an HTTP error', async () => {
     await expect(fetchQuote('x.de', undefined, async () => text('', 404))).rejects.toThrow(/404/);
+  });
+
+  it('requests the symbol through the configured proxy base', async () => {
+    let seen = '';
+    await fetchQuote('swda.uk', undefined, async (url) => {
+      seen = url;
+      return text(csv);
+    });
+    expect(seen.startsWith(`${STOOQ_BASE}/q/l/`)).toBe(true);
+    expect(seen).toContain('s=swda.uk');
+  });
+
+  // The failure that makes a deployed build look like it has a bad ticker:
+  // an unproxied path answers with the app's own HTML, and a 200 with it.
+  it('reports a missing proxy when the app HTML comes back instead of CSV', async () => {
+    await expect(
+      fetchQuote('swda.uk', undefined, async () =>
+        text('<!doctype html>\n<html><head><title>Aufteilungsrechner</title></head></html>'),
+      ),
+    ).rejects.toThrow(/not forwarding to Stooq/);
+  });
+
+  it('reports a missing proxy when the response is not Stooq CSV at all', async () => {
+    await expect(
+      fetchQuote('swda.uk', undefined, async () => text('a,b,c\n1,2,3\n')),
+    ).rejects.toThrow(/not forwarding to Stooq/);
+  });
+
+  it('does not blame the proxy for a genuinely unknown symbol', async () => {
+    await expect(
+      fetchQuote('nope.de', undefined, async () =>
+        text('Symbol,Date,Time,Open,High,Low,Close,Volume\nNOPE,N/D,N/D,N/D,N/D,N/D,N/D,N/D\n'),
+      ),
+    ).rejects.toThrow(/not a known symbol/);
   });
 });
