@@ -31,6 +31,11 @@ export interface Position {
   quoteSymbol?: string;
   /** Excluded positions still count toward the total but are never traded. */
   locked?: boolean;
+  /**
+   * Which index's country mix to use in the exposure breakdown. Unset means
+   * detect it from the ISIN or ticker.
+   */
+  exposureProfile?: string;
 }
 
 export interface Settings {

@@ -11,7 +11,7 @@ import {
   type Theme,
 } from './lib/storage';
 import { portfolioJson, timestampedName, tradePlanCsv } from './lib/exporters';
-import { fetchFxRates, fetchQuote } from './lib/quotes';
+import { currencyMismatch, fetchFxRates, fetchQuote } from './lib/quotes';
 import { SAMPLE_PORTFOLIO } from './lib/sample';
 import { SummaryTiles } from './components/SummaryTiles';
 import { PositionsTable } from './components/PositionsTable';
@@ -95,9 +95,13 @@ export default function App() {
       setQuoteStatus((s) => ({ ...s, [id]: 'loading' }));
       try {
         const quote = await fetchQuote(position.quoteSymbol);
+        const mismatch = currencyMismatch(quote, position.currency);
+        if (mismatch) throw new Error(mismatch);
         setPortfolio((p) => ({
           ...p,
-          positions: p.positions.map((x) => (x.id === id ? { ...x, unitPrice: quote.price } : x)),
+          positions: p.positions.map((x) =>
+            x.id === id ? { ...x, unitPrice: quote.price, quoteSymbol: quote.symbol } : x,
+          ),
         }));
         setQuoteStatus((s) => ({ ...s, [id]: 'ok' }));
       } catch (e) {

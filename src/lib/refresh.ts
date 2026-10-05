@@ -10,7 +10,13 @@
  * number without saying so.
  */
 import type { Portfolio, Position } from '../types';
-import { fetchFxRates, fetchQuote, type FxResult, type QuoteResult } from './quotes';
+import {
+  currencyMismatch,
+  fetchFxRates,
+  fetchQuote,
+  type FxResult,
+  type QuoteResult,
+} from './quotes';
 import { quoteCandidates } from './lookup';
 
 export type RefreshStatus = 'updated' | 'unchanged' | 'failed' | 'skipped';
@@ -97,7 +103,7 @@ async function refreshFx(
         status: previous === next ? 'unchanged' : 'updated',
         from: previous,
         to: next,
-        source: 'ECB reference rates',
+        source: result.source,
       };
     });
     return { rates: result.rates, items, asOf: result.asOf };
@@ -138,10 +144,20 @@ async function refreshPrice(
   }
 
   let lastReason = '';
+  // A listing found in the wrong currency is the most useful thing to report,
+  // so it is not overwritten by a later candidate that simply does not exist.
+  let mismatchReason = '';
   for (const symbol of candidates) {
     if (signal?.aborted) break;
     try {
       const quote = await fetchPrice(symbol, signal);
+      const mismatch = currencyMismatch(quote, position.currency);
+      if (mismatch) {
+        // The listing exists but in another currency; another candidate may
+        // be the right listing, so keep looking.
+        mismatchReason ||= mismatch;
+        continue;
+      }
       if (quote.price > 0) {
         return {
           item: {
@@ -149,10 +165,10 @@ async function refreshPrice(
             status: quote.price === position.unitPrice ? 'unchanged' : 'updated',
             from: position.unitPrice,
             to: quote.price,
-            source: symbol,
+            source: quote.symbol || symbol,
           },
           price: quote.price,
-          symbol,
+          symbol: quote.symbol || symbol,
         };
       }
       lastReason = `"${symbol}" returned no price.`;
@@ -166,8 +182,8 @@ async function refreshPrice(
       label: name,
       status: 'failed',
       reason: explicit
-        ? `"${explicit}" — ${lastReason}`
-        : `None of ${candidates.join(', ')} returned a price. ${lastReason} Set a quote symbol on the position, or enter the price by hand.`,
+        ? mismatchReason || `"${explicit}" — ${lastReason}`
+        : `None of ${candidates.join(', ')} returned a usable price. ${mismatchReason || lastReason} Set a quote symbol on the position, or enter the price by hand.`,
     },
   };
 }
@@ -203,8 +219,9 @@ export async function refreshAll(
       return {
         ...p,
         unitPrice: r.price,
-        // Remember a symbol that worked, so next time is one request.
-        quoteSymbol: p.quoteSymbol?.trim() || r.symbol,
+        // Remember the symbol that worked, in the provider's own form, so next
+        // time is one request.
+        quoteSymbol: r.symbol,
       };
     }),
   };

@@ -1,5 +1,6 @@
 import type { Portfolio } from '../types';
 import { SAMPLE_PORTFOLIO } from './sample';
+import { toYahooSymbol } from './quotes';
 
 const KEY = 'aufteilungsrechner.portfolio.v1';
 const THEME_KEY = 'aufteilungsrechner.theme';
@@ -50,8 +51,10 @@ export function hydrate(raw: unknown): Portfolio {
       shares: num(p?.shares, 0),
       targetWeight: num(p?.targetWeight, 0),
       fee: num(p?.fee, 0),
-      quoteSymbol: p?.quoteSymbol ? String(p.quoteSymbol) : undefined,
+      // Symbols saved in the old Stooq form (swda.uk) are converted to Yahoo's.
+      quoteSymbol: p?.quoteSymbol ? toYahooSymbol(String(p.quoteSymbol)) || undefined : undefined,
       locked: Boolean(p?.locked),
+      exposureProfile: p?.exposureProfile ? String(p.exposureProfile) : undefined,
     })),
   };
 }

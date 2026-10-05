@@ -15,11 +15,11 @@ export interface ProductPreset {
 }
 
 export const PRODUCT_PRESETS: ProductPreset[] = [
-  { ticker: 'SWDA', name: 'iShares Core MSCI World', isin: 'IE00B4L5Y983', currency: 'USD', quoteSymbol: 'swda.uk' },
-  { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', isin: 'IE00BKM4GZ66', currency: 'USD', quoteSymbol: 'eimi.uk' },
-  { ticker: 'IUSN', name: 'iShares MSCI World Small Cap', isin: 'IE00BF4RFH31', currency: 'EUR', quoteSymbol: 'iusn.de' },
-  { ticker: 'VWRL', name: 'Vanguard FTSE All-World', isin: 'IE00B3RBWM25', currency: 'USD', quoteSymbol: 'vwrl.uk' },
-  { ticker: 'AGGH', name: 'iShares Core Global Aggregate Bond', isin: 'IE00BDBRDM35', currency: 'USD', quoteSymbol: 'aggh.uk' },
+  { ticker: 'SWDA', name: 'iShares Core MSCI World', isin: 'IE00B4L5Y983', currency: 'USD', quoteSymbol: 'SWDA.L' },
+  { ticker: 'EIMI', name: 'iShares Core MSCI EM IMI', isin: 'IE00BKM4GZ66', currency: 'USD', quoteSymbol: 'EIMI.L' },
+  { ticker: 'IUSN', name: 'iShares MSCI World Small Cap', isin: 'IE00BF4RFH31', currency: 'EUR', quoteSymbol: 'IUSN.DE' },
+  { ticker: 'VWRL', name: 'Vanguard FTSE All-World', isin: 'IE00B3RBWM25', currency: 'USD', quoteSymbol: 'VWRL.L' },
+  { ticker: 'AGGH', name: 'iShares Core Global Aggregate Bond', isin: 'IE00BDBRDM35', currency: 'USD', quoteSymbol: 'AGGH.L' },
 ];
 
 type Status = 'idle' | 'loading' | 'done' | 'error';

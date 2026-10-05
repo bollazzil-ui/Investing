@@ -5,6 +5,8 @@ import { equalizeWeights, normalizeWeights } from '../lib/calc';
 import { seriesColor, isFoldedColor } from '../lib/colors';
 import { NumberField, Section, TextField } from './primitives';
 import { AddProductDialog } from './AddProductDialog';
+import { ExposureDialog } from './ExposureDialog';
+import { PROFILES, profileFor } from '../lib/exposure';
 
 export function PositionsTable({
   portfolio,
@@ -21,6 +23,7 @@ export function PositionsTable({
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [showExposure, setShowExposure] = useState(false);
   const { positions, settings } = portfolio;
   const base = settings.baseCurrency;
   const weightSum = result.targetWeightSum;
@@ -61,6 +64,14 @@ export function PositionsTable({
       description="Value is derived from shares × unit price × exchange rate, so it always matches reality."
       actions={
         <>
+          <button
+            className="btn"
+            onClick={() => setShowExposure(true)}
+            disabled={positions.length === 0}
+            title="Look-through split by continent, country and currency"
+          >
+            Exposure
+          </button>
           <button className="btn" onClick={() => onChange(equalizeWeights(positions))} disabled={positions.length === 0}>
             Equal weights
           </button>
@@ -255,12 +266,12 @@ export function PositionsTable({
                             />
                           </div>
                           <div>
-                            <label className="label">Quote symbol (Stooq)</label>
+                            <label className="label">Quote symbol (Yahoo Finance)</label>
                             <div className="flex gap-2">
                               <TextField
                                 value={p.quoteSymbol ?? ''}
                                 onChange={(v) => update(p.id, { quoteSymbol: v })}
-                                placeholder="swda.uk"
+                                placeholder="SWDA.L"
                               />
                               <button
                                 className="btn"
@@ -280,6 +291,31 @@ export function PositionsTable({
                                 {status === 'ok' ? '✓ Price updated' : `✕ ${status.error}`}
                               </p>
                             )}
+                          </div>
+                          <div>
+                            <label className="label" htmlFor={`exposure-${p.id}`}>
+                              Exposure (tracked index)
+                            </label>
+                            <select
+                              id={`exposure-${p.id}`}
+                              className="field"
+                              value={p.exposureProfile ?? ''}
+                              onChange={(e) =>
+                                update(p.id, { exposureProfile: e.target.value || undefined })
+                              }
+                            >
+                              <option value="">
+                                {(() => {
+                                  const detected = profileFor({ ...p, exposureProfile: undefined });
+                                  return detected ? `Auto: ${detected.label}` : 'Auto: not recognised';
+                                })()}
+                              </option>
+                              {PROFILES.map((profile) => (
+                                <option key={profile.id} value={profile.id}>
+                                  {profile.label}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="flex items-end">
                             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -350,6 +386,13 @@ export function PositionsTable({
         baseCurrency={base}
         defaultFee={positions.length > 0 ? positions[positions.length - 1].fee : 0}
         suggestedWeight={Math.max(0, 1 - weightSum)}
+      />
+      <ExposureDialog
+        open={showExposure}
+        onClose={() => setShowExposure(false)}
+        positions={positions}
+        result={result}
+        baseCurrency={base}
       />
     </Section>
   );
