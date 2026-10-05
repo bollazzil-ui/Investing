@@ -75,6 +75,11 @@ export interface Settings {
    * leaves money unspent on every position at once; this puts it to work.
    */
   useLeftoverCash: boolean;
+  /**
+   * How far a weight may sit from its target before it is flagged, as a
+   * fraction (0.005 = ±0.5 percentage points). Display only — the plan ignores it.
+   */
+  driftTolerance?: number;
 }
 
 export interface Portfolio {
@@ -88,6 +93,8 @@ export interface Portfolio {
   name: string;
   settings: Settings;
   positions: Position[];
+  /** ISO time share prices were last fetched, shown next to the refresh button. */
+  pricesUpdatedAt?: string;
 }
 
 /** Per-position output of the rebalancing engine. */

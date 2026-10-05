@@ -65,3 +65,29 @@ export function parseNumber(input: string): number | null {
 export function uid(): string {
   return `p_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36).slice(-4)}`;
 }
+
+/**
+ * How old the share prices are, for the label next to the refresh button.
+ * Older than a day counts as stale — a monthly rebalance should start with a
+ * refresh.
+ */
+export function formatFreshness(
+  iso: string | undefined,
+  now: number,
+): { label: string; stale: boolean } {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return { label: 'Prices not refreshed yet', stale: true };
+  const minutes = Math.max(0, Math.floor((now - t) / 60_000));
+  if (minutes < 1) return { label: 'Prices updated just now', stale: false };
+  if (minutes < 60) return { label: `Prices updated ${minutes} min ago`, stale: false };
+  const then = new Date(t);
+  const time = then.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  if (new Date(now).toDateString() === then.toDateString()) {
+    return { label: `Prices updated today ${time}`, stale: false };
+  }
+  const days = Math.max(1, Math.round((now - t) / 86_400_000));
+  return {
+    label: days === 1 ? 'Prices from yesterday' : `Prices from ${days} days ago`,
+    stale: now - t > 86_400_000,
+  };
+}

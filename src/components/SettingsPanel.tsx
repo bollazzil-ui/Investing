@@ -1,5 +1,6 @@
 import type { Portfolio, Settings } from '../types';
 import { NumberField, SegmentedControl, TextField, Toggle } from './primitives';
+import { driftTolerance } from '../lib/drift';
 
 export function SettingsPanel({
   portfolio,
@@ -96,6 +97,26 @@ export function SettingsPanel({
         />
         <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
           Each position’s fee is entered in that position’s own currency.
+        </p>
+      </div>
+
+      <div className="border-t border-[var(--border)] pt-4">
+        <label className="label" htmlFor="drift-tolerance">
+          Drift tolerance
+        </label>
+        <div className="w-32">
+          <NumberField
+            inputId="drift-tolerance"
+            value={driftTolerance(settings) * 100}
+            onChange={(v) => set({ driftTolerance: v / 100 })}
+            suffix="%"
+            min={0}
+            max={100}
+          />
+        </div>
+        <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-[var(--ink-3)]">
+          A weight within ± this many percentage points of its target counts as on target and
+          is shown in grey. Only drift beyond it is coloured. It does not change the plan.
         </p>
       </div>
 

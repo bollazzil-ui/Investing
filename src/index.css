@@ -25,7 +25,8 @@
   /* Ink */
   --ink-1: #0f172a;
   --ink-2: #4a5568;
-  --ink-3: #75839a;
+  /* Darkened from #75839a so small labels clear WCAG AA (4.5:1) on surface-2. */
+  --ink-3: #5b687d;
 
   /* Accent (validated blue, unchanged) */
   --accent: #2a78d6;
@@ -46,10 +47,14 @@
   --series-8: #e34948;
   --series-other: #9d9c94;
 
-  /* Diverging pair for drift: blue = underweight, red = overweight. */
-  --diverge-neg: #2a78d6;
-  --diverge-pos: #d03b3b;
-  --diverge-mid: #dde3ec;
+  /*
+   * Drift outside the tolerance band: blue = underweight, amber = overweight.
+   * Deliberately not red/green — in a finance app those read as loss/gain.
+   */
+  --drift-under: #1f68c2;
+  --drift-over: #a85a00;
+  --drift-under-soft: #e3eefc;
+  --drift-over-soft: #fbefdc;
 
   /* Status */
   --good: #0ca30c;
@@ -57,6 +62,7 @@
   --critical: #d03b3b;
   --good-soft: #e8f7e8;
   --warning-soft: #fdf4de;
+  --warning-ink: #7a4b00;
   --critical-soft: #fbeaea;
 
   /* Elevation */
@@ -105,15 +111,17 @@
   --series-8: #e66767;
   --series-other: #6f6e67;
 
-  --diverge-neg: #3987e5;
-  --diverge-pos: #e66767;
-  --diverge-mid: #2b3648;
+  --drift-under: #5ea2f0;
+  --drift-over: #f0a64a;
+  --drift-under-soft: #15263d;
+  --drift-over-soft: #2e2210;
 
   --good: #0ca30c;
   --warning: #fab219;
   --critical: #d03b3b;
   --good-soft: #10240f;
   --warning-soft: #2b2408;
+  --warning-ink: #f5c766;
   --critical-soft: #2c1414;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
@@ -386,6 +394,78 @@ h3 {
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-3);
+  }
+
+  /* Popover menus (header ⋯, row ⋯). Positioned fixed so table scrollers never clip them. */
+  .menu {
+    position: fixed;
+    z-index: 60;
+    min-width: 12rem;
+    padding: 0.3rem;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-overlay);
+  }
+  .menu-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.6rem;
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ink-1);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .menu-item svg {
+    color: var(--ink-3);
+    flex-shrink: 0;
+  }
+  .menu-item:hover:not(:disabled),
+  .menu-item:focus-visible {
+    background: var(--surface-2);
+    outline: none;
+  }
+  .menu-item:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .menu-item-danger,
+  .menu-item-danger svg {
+    color: var(--critical);
+  }
+  .menu-item-danger:hover:not(:disabled),
+  .menu-item-danger:focus-visible {
+    background: var(--critical-soft);
+  }
+  .menu-sep {
+    height: 1px;
+    margin: 0.3rem 0.2rem;
+    background: var(--border);
+  }
+  .menu-label {
+    padding: 0.35rem 0.6rem 0.2rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* First column stays put while a wide table scrolls sideways. */
+  .sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface-1);
+  }
+  th.sticky-col,
+  tfoot .sticky-col {
+    background: var(--surface-2);
   }
 
   .scroll-x {

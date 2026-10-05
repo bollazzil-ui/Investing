@@ -5,7 +5,7 @@ import { toYahooSymbol } from './quotes';
 const KEY = 'aufteilungsrechner.portfolio.v1';
 const THEME_KEY = 'aufteilungsrechner.theme';
 
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'system';
 
 /**
  * Fills in anything a stored or imported portfolio is missing, so an older or
@@ -40,7 +40,12 @@ export function hydrate(raw: unknown): Portfolio {
       useLeftoverCash: s.useLeftoverCash ?? true,
       conversionSpread: num(s.conversionSpread, 0.0025),
       conversionFee: num(s.conversionFee, 0),
+      driftTolerance: Math.max(0, num(s.driftTolerance, 0.005)),
     },
+    pricesUpdatedAt:
+      typeof input.pricesUpdatedAt === 'string' && !Number.isNaN(Date.parse(input.pricesUpdatedAt))
+        ? input.pricesUpdatedAt
+        : undefined,
     positions: positions.map((p, i) => ({
       id: typeof p?.id === 'string' && p.id ? p.id : `p_${i}_${Math.random().toString(36).slice(2, 8)}`,
       ticker: String(p?.ticker ?? ''),
@@ -109,10 +114,16 @@ export function savePortfolio(portfolio: Portfolio): void {
 export function loadTheme(): Theme {
   try {
     const stored = localStorage.getItem(THEME_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
   } catch {
     /* ignore */
   }
+  return 'system';
+}
+
+/** What a theme choice resolves to right now. */
+export function resolveTheme(theme: Theme): 'light' | 'dark' {
+  if (theme !== 'system') return theme;
   try {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   } catch {

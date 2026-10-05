@@ -11,7 +11,7 @@ import type { Portfolio } from '../types';
  */
 export const SAMPLE_PORTFOLIO: Portfolio = {
   version: 2,
-  name: 'Aufteilungsrechner',
+  name: 'My portfolio',
   settings: {
     baseCurrency: 'CHF',
     cashBalances: { CHF: 290.4 },
@@ -23,6 +23,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
     useLeftoverCash: true,
     conversionSpread: 0.0025,
     conversionFee: 0,
+    driftTolerance: 0.005,
   },
   positions: [
     {

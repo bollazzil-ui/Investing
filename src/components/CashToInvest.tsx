@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { CalcResult, Portfolio, Settings } from '../types';
 import { cashTotalBase, fxRate } from '../lib/calc';
+import { ArrowLeftRight, RefreshCw } from 'lucide-react';
 import { formatMoney } from '../lib/format';
 import { NumberField, Section } from './primitives';
 
@@ -82,19 +83,23 @@ export function CashToInvest({
           onClick={onRefreshFx}
           disabled={fxStatus === 'loading' || codes.length <= 1}
         >
-          {fxStatus === 'loading' ? 'Fetching…' : '⟳ Fetch rates'}
+          <RefreshCw
+            size={15}
+            className={fxStatus === 'loading' ? 'animate-spin' : undefined}
+            aria-hidden
+          />
+          {fxStatus === 'loading' ? 'Fetching…' : 'Fetch rates'}
         </button>
       }
     >
       <div className="scroll-x">
-        <table className="w-full min-w-[46rem] border-collapse">
+        <table className="w-full border-collapse sm:min-w-[34rem]">
           <thead>
             <tr className="border-b border-[var(--border)]">
-              <th className="th th-left w-[7rem]">Currency</th>
-              <th className="th w-[11rem]">Available</th>
-              <th className="th w-[12rem]">1 unit = ? {base}</th>
-              <th className="th w-[11rem]">Value in {base}</th>
-              <th className="th th-left">Used by</th>
+              <th className="th th-left sticky-col">Currency</th>
+              <th className="th sm:w-[11rem]">Available</th>
+              <th className="th sm:w-[11rem]">1 unit = ? {base}</th>
+              <th className="th w-[9rem] max-sm:hidden">Value in {base}</th>
             </tr>
           </thead>
           <tbody>
@@ -108,13 +113,26 @@ export function CashToInvest({
                   key={code}
                   className="border-b border-[var(--border)] transition-colors hover:bg-[var(--surface-2)]/70"
                 >
-                  <td className="td td-left">
-                    <span className="num font-semibold">{code}</span>
-                    {code === base && (
-                      <span className="ml-2 text-[0.6875rem] font-medium text-[var(--ink-3)]">
-                        base
-                      </span>
-                    )}
+                  <td className="td td-left sticky-col !whitespace-normal">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="num font-semibold">{code}</span>
+                      {needsConversion.has(code) && (
+                        <span
+                          className="chip"
+                          style={{ background: 'var(--warning-soft)', color: 'var(--warning-ink)' }}
+                          title={`The plan buys more ${code} than this balance holds, so part of it is converted.`}
+                        >
+                          <ArrowLeftRight size={11} strokeWidth={2.5} aria-hidden /> Converting
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-xs text-[var(--ink-3)]">
+                      {code === base
+                        ? 'Base currency'
+                        : usedBy[code]
+                          ? `For ${usedBy[code].join(', ')}`
+                          : 'No position'}
+                    </div>
                   </td>
                   <td className="td">
                     <NumberField
@@ -122,8 +140,14 @@ export function CashToInvest({
                       onChange={(v) => setBalance(code, v)}
                       min={0}
                       suffix={code}
+                      inputId={`cash-amount-${code}`}
                       ariaLabel={`Cash available in ${code}`}
                     />
+                    {code !== base && (
+                      <div className="num mt-0.5 text-[0.6875rem] text-[var(--ink-3)] sm:hidden">
+                        = {formatMoney(valueBase, base)}
+                      </div>
+                    )}
                   </td>
                   <td className="td">
                     {code === base ? (
@@ -140,27 +164,10 @@ export function CashToInvest({
                     )}
                   </td>
                   <td
-                    className="td num font-medium"
+                    className="td num font-medium max-sm:hidden"
                     style={{ color: empty ? 'var(--ink-3)' : undefined }}
                   >
                     {formatMoney(valueBase)}
-                  </td>
-                  <td className="td td-left">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs text-[var(--ink-3)]">
-                        {usedBy[code]?.join(', ') ??
-                          (code === base ? 'Reporting currency' : 'No position')}
-                      </span>
-                      {needsConversion.has(code) && (
-                        <span
-                          className="chip"
-                          style={{ background: 'var(--warning-soft)', color: 'var(--ink-2)' }}
-                          title={`The plan buys more ${code} than this balance holds, so part of it is converted.`}
-                        >
-                          <span aria-hidden>⇄</span> Converting
-                        </span>
-                      )}
-                    </div>
                   </td>
                 </tr>
               );
@@ -168,12 +175,12 @@ export function CashToInvest({
           </tbody>
           <tfoot>
             <tr className="bg-[var(--surface-2)]">
-              <td className="td td-left font-semibold">Total</td>
-              <td className="td" />
-              <td className="td" />
-              <td className="td num font-semibold">{formatMoney(total)}</td>
-              <td className="td td-left text-xs text-[var(--ink-3)]">
-                Pooled budget — any balance can fund any purchase
+              <td className="td td-left sticky-col font-semibold">Total</td>
+              <td className="td td-left text-xs text-[var(--ink-3)] max-sm:hidden" colSpan={2}>
+                Pooled — any balance can fund any purchase
+              </td>
+              <td className="td num font-semibold max-sm:text-left" colSpan={1}>
+                {formatMoney(total, base)}
               </td>
             </tr>
           </tfoot>
@@ -183,15 +190,15 @@ export function CashToInvest({
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-[var(--border)] px-4 py-3 text-xs sm:px-5">
         {missingRates.length > 0 && (
           <span style={{ color: 'var(--critical)' }}>
-            ✕ No exchange rate for {missingRates.join(', ')} — enter one, or the values above are
+            No exchange rate for {missingRates.join(', ')} — enter one, or the values above are
             wrong.
           </span>
         )}
         {typeof fxStatus === 'object' && 'asOf' in fxStatus && (
-          <span style={{ color: 'var(--good)' }}>✓ ECB reference rates from {fxStatus.asOf}</span>
+          <span style={{ color: 'var(--good)' }}>ECB reference rates from {fxStatus.asOf}</span>
         )}
         {typeof fxStatus === 'object' && 'error' in fxStatus && (
-          <span style={{ color: 'var(--critical)' }}>✕ {fxStatus.error}</span>
+          <span style={{ color: 'var(--critical)' }}>{fxStatus.error}</span>
         )}
         {result.conversionCost > 1e-6 && (
           <span className="text-[var(--ink-2)]">

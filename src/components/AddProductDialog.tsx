@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { Position } from '../types';
 import { uid } from '../lib/format';
@@ -52,7 +53,7 @@ function SourceBadge({ source }: { source: FieldSource }) {
           : 'Inferred from the listing exchange — please confirm it'
       }
     >
-      {found ? '✓ found' : '⚠ check'}
+      {found ? 'found' : 'check'}
     </span>
   );
 }
@@ -258,7 +259,7 @@ export function AddProductDialog({
             </p>
           </div>
           <button className="btn btn-ghost !px-2" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={17} aria-hidden />
           </button>
         </header>
 
@@ -314,7 +315,7 @@ export function AddProductDialog({
                 <p className="text-[var(--ink-2)]">Looking up {query.trim()}…</p>
               )}
               {status === 'error' && error && (
-                <p style={{ color: 'var(--critical)' }}>✕ {error}</p>
+                <p style={{ color: 'var(--critical)' }}>{error}</p>
               )}
               {status === 'done' && found && (
                 <>

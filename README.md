@@ -1,4 +1,4 @@
-# Aufteilungsrechner — Portfolio Allocation & Rebalancing Calculator
+# Portfolio Rebalancer (Aufteilungsrechner)
 
 A web app that replaces `Aufteilungsrechner.xlsx`: it works out **how many shares
 to buy or sell** to bring a multi-currency portfolio back to its target
@@ -9,22 +9,37 @@ removed, reordered and reweighted freely.
 
 ## The dashboard
 
-One view, full width, in this order:
+One view, full width, ordered around the decision — what to place with your
+broker comes first, the inputs behind it below:
 
-1. **Positions** — every holding: price, shares, value, actual vs. target weight,
-   drift and fee. Add, remove, reorder, reweight.
-2. **Cash to invest** — how much money you have, by currency (below).
-3. **Allocation** — composition today, target, and after the plan, plus drift.
-4. **Trade plan** — what to buy or sell, and what cash is left afterwards.
+1. **Your plan** — four figures (cash to invest, net traded, fees, left over),
+   one card per order to place, and any warning about the plan with a button
+   that fixes it (*Add EUR cash*, *Normalise targets to 100%*, *Allow
+   selling*). The full calculation — target values, ideal share counts and the
+   cash left in each currency — is one click away under *Show the
+   calculation*. **Print** and **Export CSV** take the plan to your broker.
+2. **Positions** — every holding: price, shares, value, target and fee. The
+   *Weight* column shows each position against its target in one line: a faint
+   bar for today, a solid one for after the plan, a tick at the target. Drag
+   the handle to reorder; the *⋯* menu on each row edits details, moves,
+   duplicates or removes it (with *Undo*).
+3. **Cash to invest** — how much money you have, by currency (below).
 
-Calculation settings live in a dialog behind **Settings** in the header, so
-nothing competes with the tables for width.
+Drift is coloured only when it is outside the **drift tolerance** (±0.5
+percentage points by default, in Settings) — blue for underweight, amber for
+overweight. Inside the band it stays grey, so a rounding remainder never looks
+like a problem.
+
+The header carries **Refresh prices** with how fresh the prices are,
+**Settings**, and a *⋯* menu for import, export, the theme (system, light or
+dark) and replacing the portfolio with the example. Below 768px wide the
+positions become cards.
 
 ![Dashboard](docs/screenshot-light.png)
 
 ## Cash to invest
 
-The section between *Positions* and *Allocation* is where the money goes in. It
+The section below *Positions* is where the money goes in. It
 holds one row per currency, and the rows look after themselves:
 
 - the **base currency**, always first;
@@ -165,6 +180,7 @@ nothing.
 | **Allow selling** | Off = buy-only rebalancing; overweight positions are left alone. |
 | **Fractional shares** | Skips whole-share rounding entirely. |
 | **Use up the leftover cash** | After the main plan, buy extra whole shares of whatever is still furthest below target. |
+| **Drift tolerance** | Display only: how far a weight may drift before it is coloured. Does not change the plan. |
 | **Hold — never trade** (per position) | The position counts toward the total but is never bought or sold, and is charged no fee. |
 
 The app warns when target weights do not sum to 100%, when the plan needs more
@@ -174,9 +190,8 @@ cash than is available, and when a price or exchange rate is missing.
 
 ## Adding and removing products
 
-*Add a product* (guided) and *+ Add position* (advanced) both open the same
-dialog. Type an **ISIN or ticker**, leave the field, and the rest fills itself
-in:
+*Add position* opens a lookup dialog. Type an **ISIN or ticker**, leave the
+field, and the rest fills itself in:
 
 ![Add product dialog](docs/screenshot-add-product.png)
 
@@ -246,7 +261,7 @@ convenience, never a gate. Type a value in and the whole plan recalculates. A
 quote symbol that turns out to work is remembered on the position, so the next
 refresh is a single request.
 
-The per-position *Fetch* button and the *Fetch live* button for exchange rates
+The per-position *Fetch* button and the *Fetch rates* button for exchange rates
 are still there for refreshing one thing at a time.
 
 ## Live quotes
@@ -326,8 +341,8 @@ Everything lives in your browser's `localStorage` — no account, no server, and
 nothing leaves the machine except the two optional quote requests above. Clearing
 site data resets the app to the example portfolio.
 
-- **Export** writes the whole portfolio as JSON.
-- **Import** reads one back; missing or malformed fields are filled in rather
+- **Export portfolio** (header *⋯* menu) writes the whole portfolio as JSON.
+- **Import portfolio** reads one back; missing or malformed fields are filled in rather
   than crashing.
 - **Export CSV** (trade plan) writes a semicolon-separated file that Excel opens
   directly, with every intermediate figure per position.
@@ -359,8 +374,12 @@ src/
     exporters.ts        CSV / JSON output
     format.ts           Locale-aware formatting and parsing
     colors.ts           Categorical colour assignment
+    drift.ts            Drift tolerance and its on-target/under/over tone
   components/
     CashToInvest        Per-currency cash and exchange rates
+    TradePlan           "Your plan": figures, orders, the calculation
+    PlanNotices         Warnings with the action that resolves each
+    Menu                Accessible popover menu (header and row ⋯)
     AddProductDialog    ISIN/ticker lookup dialog
     SettingsDialog      Calculation settings
     *.tsx               The dashboard sections

@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 import type { RefreshItem, RefreshReport } from '../lib/refresh';
 import { formatMoney } from '../lib/format';
@@ -111,7 +112,7 @@ export function RefreshDialog({
             </p>
           </div>
           <button className="btn btn-ghost !px-2" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={17} aria-hidden />
           </button>
         </header>
 

@@ -294,3 +294,27 @@ export function ChartTooltip({
     </div>
   );
 }
+
+/** Tracks a CSS media query, so a layout can switch structure, not just style. */
+export function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(() => {
+    try {
+      return window.matchMedia(query).matches;
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    let mql: MediaQueryList;
+    try {
+      mql = window.matchMedia(query);
+    } catch {
+      return;
+    }
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
+}

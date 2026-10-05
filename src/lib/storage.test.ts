@@ -69,4 +69,15 @@ describe('hydrate — robustness', () => {
       expect(hydrate(junk).version).toBe(2);
     }
   });
+
+  it('keeps a valid price timestamp and drops a broken one', () => {
+    expect(hydrate({ pricesUpdatedAt: '2026-10-05T12:00:00.000Z' }).pricesUpdatedAt).toBe(
+      '2026-10-05T12:00:00.000Z',
+    );
+    expect(hydrate({ pricesUpdatedAt: 'yesterday-ish' }).pricesUpdatedAt).toBeUndefined();
+  });
+
+  it('defaults the drift tolerance to half a percentage point', () => {
+    expect(hydrate({}).settings.driftTolerance).toBe(0.005);
+  });
 });

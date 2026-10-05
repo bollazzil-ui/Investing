@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Download,
+  FileDown,
+  Monitor,
+  Moon,
+  MoreHorizontal,
+  RefreshCw,
+  RotateCcw,
+  Settings as SettingsIcon,
+  Sun,
+  Upload,
+} from 'lucide-react';
 import type { Portfolio, Position, Settings } from './types';
-import { calculate } from './lib/calc';
+import { calculate, normalizeWeights } from './lib/calc';
+import { driftTolerance } from './lib/drift';
+import { formatFreshness } from './lib/format';
 import {
   downloadFile,
   hydrate,
   loadPortfolio,
   loadTheme,
+  resolveTheme,
   savePortfolio,
   saveTheme,
   type Theme,
@@ -13,25 +28,28 @@ import {
 import { portfolioJson, timestampedName, tradePlanCsv } from './lib/exporters';
 import { currencyMismatch, fetchFxRates, fetchQuote } from './lib/quotes';
 import { SAMPLE_PORTFOLIO } from './lib/sample';
-import { SummaryTiles } from './components/SummaryTiles';
 import { PositionsTable } from './components/PositionsTable';
 import { SettingsDialog } from './components/SettingsDialog';
 import { CashToInvest } from './components/CashToInvest';
-import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
+import { PlanNotices } from './components/PlanNotices';
+import { Menu } from './components/Menu';
 import { TextField } from './components/primitives';
 import { RefreshDialog } from './components/RefreshDialog';
 import { REFRESH_TIMEOUT_MS, applyRefresh, refreshAll, type RefreshReport } from './lib/refresh';
 
 type FxStatus = 'idle' | 'loading' | { asOf: string } | { error: string };
 type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefined>;
+type Toast = { text: string; action?: { label: string; run: () => void } };
 
 export default function App() {
   const [portfolio, setPortfolio] = useState<Portfolio>(loadPortfolio);
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [fxStatus, setFxStatus] = useState<FxStatus>('idle');
   const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>({});
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToastState] = useState<Toast | null>(null);
+  const [dismissedNotices, setDismissedNotices] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshReport, setRefreshReport] = useState<RefreshReport | null>(null);
@@ -42,15 +60,37 @@ export default function App() {
   }, [portfolio]);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
     saveTheme(theme);
+    const apply = () =>
+      document.documentElement.classList.toggle('dark', resolveTheme(theme) === 'dark');
+    apply();
+    if (theme !== 'system') return;
+    // Follow the OS while on "System".
+    try {
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
+      mql.addEventListener('change', apply);
+      return () => mql.removeEventListener('change', apply);
+    } catch {
+      return;
+    }
   }, [theme]);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
+    // A toast with an Undo stays long enough to reach for it.
+    const t = setTimeout(() => setToastState(null), toast.action ? 8000 : 3500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Keeps "updated 5 min ago" current without a reload.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const setToast = useCallback((text: string, action?: Toast['action']) => {
+    setToastState({ text, action });
+  }, []);
 
   const result = useMemo(() => calculate(portfolio), [portfolio]);
 
@@ -134,7 +174,13 @@ export default function App() {
       });
       // Applied to the latest state, not the snapshot the refresh started
       // from, so edits made while it ran are kept.
-      setPortfolio((current) => applyRefresh(current, updates));
+      setPortfolio((current) => {
+        const next = applyRefresh(current, updates);
+        // Stamp the time only when every price came back, so the stamp never
+        // vouches for a price that failed to update.
+        return report.clean ? { ...next, pricesUpdatedAt: new Date().toISOString() } : next;
+      });
+      setNow(Date.now());
       if (report.clean) {
         setToast(
           report.updated > 0
@@ -151,7 +197,7 @@ export default function App() {
       clearTimeout(timer);
       setRefreshing(false);
     }
-  }, [portfolio, refreshing]);
+  }, [portfolio, refreshing, setToast]);
 
   function exportJson() {
     downloadFile(
@@ -181,19 +227,57 @@ export default function App() {
     }
   }
 
-  function resetToSample() {
-    if (!confirm('Replace the current portfolio with the original spreadsheet example? This cannot be undone.')) return;
-    setPortfolio(SAMPLE_PORTFOLIO);
-    setToast('Reset to the spreadsheet example.');
+  /** Removes a position, with an Undo that puts it back where it was. */
+  const removePosition = useCallback(
+    (id: string) => {
+      const at = portfolio.positions.findIndex((p) => p.id === id);
+      if (at < 0) return;
+      const removed = portfolio.positions[at];
+      setPortfolio((p) => ({ ...p, positions: p.positions.filter((x) => x.id !== id) }));
+      setToast(`Removed ${removed.ticker || removed.name || 'position'}.`, {
+        label: 'Undo',
+        run: () => {
+          setPortfolio((p) => {
+            if (p.positions.some((x) => x.id === id)) return p;
+            const positions = [...p.positions];
+            positions.splice(Math.min(at, positions.length), 0, removed);
+            return { ...p, positions };
+          });
+          setToastState(null);
+        },
+      });
+    },
+    [portfolio.positions, setToast],
+  );
+
+  function focusCash(code: string) {
+    const el = document.getElementById(`cash-amount-${code}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
   }
 
-  const showAfter = result.positions.some((p) => p.tradeShares !== 0);
+  function resetToSample() {
+    if (!confirm('Replace the current portfolio with the example portfolio?')) return;
+    const previous = portfolio;
+    setPortfolio(SAMPLE_PORTFOLIO);
+    setToast('Replaced with the example portfolio.', {
+      label: 'Undo',
+      run: () => {
+        setPortfolio(previous);
+        setToastState(null);
+      },
+    });
+  }
+
+  const base = portfolio.settings.baseCurrency;
+  const freshness = formatFreshness(portfolio.pricesUpdatedAt, now);
 
   return (
     <div className="min-h-full">
       <header className="no-print sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--page)_82%,transparent)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[100rem] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="mx-auto flex max-w-[100rem] items-center gap-3 px-4 py-2.5 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--r-md)] text-sm font-bold"
               style={{
@@ -203,100 +287,122 @@ export default function App() {
               }}
               aria-hidden
             >
-              A
+              R
             </span>
-            <div className="min-w-0">
-              <div className="w-52 sm:w-64">
+            <div className="min-w-0 flex-1">
+              <div className="w-full max-w-64">
                 <TextField
                   value={portfolio.name}
                   onChange={(v) => setPortfolio((p) => ({ ...p, name: v }))}
                   ariaLabel="Portfolio name"
-                  className="!border-transparent !bg-transparent !px-1 !shadow-none text-base font-semibold tracking-[-0.015em]"
+                  className="!border-transparent !bg-transparent !px-1 !py-0.5 !shadow-none text-base font-semibold tracking-[-0.015em] hover:!border-[var(--border)]"
                 />
               </div>
-              <p className="px-1 text-[0.6875rem] font-medium text-[var(--ink-3)]">
-                Allocation &amp; rebalancing calculator
+              <p className="truncate px-1 text-[0.6875rem] font-medium text-[var(--ink-3)]">
+                Portfolio rebalancer
               </p>
             </div>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <input
-              ref={fileInput}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void importJson(f);
-                e.target.value = '';
-              }}
-            />
-            <button className="btn" onClick={() => setSettingsOpen(true)}>
-              <span aria-hidden>⚙</span> Settings
-            </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importJson(f);
+              e.target.value = '';
+            }}
+          />
+
+          <div className="flex shrink-0 items-center gap-2">
+            <span
+              className="hidden text-right text-[0.6875rem] leading-tight text-[var(--ink-3)] md:block"
+              title={
+                portfolio.pricesUpdatedAt
+                  ? `Prices last refreshed ${new Date(portfolio.pricesUpdatedAt).toLocaleString()}`
+                  : undefined
+              }
+              style={{ color: freshness.stale ? 'var(--warning-ink)' : undefined }}
+            >
+              {freshness.label}
+            </span>
             <button
               className="btn"
               onClick={() => void refreshPrices()}
               disabled={refreshing}
-              title="Fetch current exchange rates and share prices"
+              title={`Fetch current exchange rates and share prices — ${freshness.label.toLowerCase()}`}
               aria-busy={refreshing}
             >
-              {refreshing ? (
-                <span
-                  className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-[var(--accent)]"
-                  aria-hidden
-                />
-              ) : (
-                <span aria-hidden>⟳</span>
-              )}
-              {refreshing ? 'Refreshing…' : 'Refresh prices'}
-            </button>
-            <button className="btn" onClick={() => fileInput.current?.click()}>
-              ↑ Import
-            </button>
-            <button className="btn" onClick={exportJson}>
-              ↓ Export
-            </button>
-            <button className="btn" onClick={resetToSample} title="Load the original spreadsheet example">
-              Reset
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : undefined} aria-hidden />
+              <span className="max-sm:sr-only">{refreshing ? 'Refreshing…' : 'Refresh prices'}</span>
             </button>
             <button
-              className="btn !px-2"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              className="btn"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Settings"
+              title="Calculator settings"
             >
-              {theme === 'dark' ? '☀' : '☾'}
+              <SettingsIcon size={15} aria-hidden />
+              <span className="max-lg:sr-only">Settings</span>
             </button>
+            <Menu
+              ariaLabel="More"
+              triggerClassName="btn !px-2"
+              trigger={<MoreHorizontal size={17} aria-hidden />}
+              entries={[
+                { label: 'Import portfolio…', icon: Upload, onSelect: () => fileInput.current?.click() },
+                { label: 'Export portfolio (JSON)', icon: Download, onSelect: exportJson },
+                {
+                  label: 'Export trade plan (CSV)',
+                  icon: FileDown,
+                  onSelect: exportCsv,
+                  disabled: portfolio.positions.length === 0,
+                },
+                { kind: 'separator' },
+                { kind: 'label', label: 'Theme' },
+                { label: 'System', icon: Monitor, checked: theme === 'system', onSelect: () => setTheme('system') },
+                { label: 'Light', icon: Sun, checked: theme === 'light', onSelect: () => setTheme('light') },
+                { label: 'Dark', icon: Moon, checked: theme === 'dark', onSelect: () => setTheme('dark') },
+                { kind: 'separator' },
+                {
+                  label: 'Replace with example…',
+                  icon: RotateCcw,
+                  danger: true,
+                  onSelect: resetToSample,
+                },
+              ]}
+            />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[100rem] space-y-4 px-4 py-5 sm:px-6">
-        <SummaryTiles result={result} currency={portfolio.settings.baseCurrency} />
-
-        {result.warnings.length > 0 && (
-          <div
-            role="status"
-            className="card border-l-[3px] px-4 py-3.5"
-            style={{ borderLeftColor: 'var(--warning)', background: 'var(--warning-soft)' }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-2)]">
-              ⚠ Check these
-            </p>
-            <ul className="mt-1 space-y-1 text-sm text-[var(--ink-1)]">
-              {result.warnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <TradePlan
+          result={result}
+          currency={base}
+          tolerance={driftTolerance(portfolio.settings)}
+          onExportCsv={exportCsv}
+          notices={
+            <PlanNotices
+              result={result}
+              settings={portfolio.settings}
+              dismissedKey={dismissedNotices}
+              onDismiss={setDismissedNotices}
+              onNormalise={() => setPositions(normalizeWeights(portfolio.positions))}
+              onFocusCash={focusCash}
+              onAllowSell={() => setSettings({ ...portfolio.settings, allowSell: true })}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+          }
+        />
 
         <PositionsTable
           portfolio={portfolio}
           result={result}
           onChange={setPositions}
+          onRemove={removePosition}
           onRefreshQuote={refreshQuote}
           quoteStatus={quoteStatus}
         />
@@ -306,17 +412,6 @@ export default function App() {
           onChange={setSettings}
           onRefreshFx={refreshFx}
           fxStatus={fxStatus}
-        />
-        <AllocationChart
-          result={result}
-          currency={portfolio.settings.baseCurrency}
-          showAfter={showAfter}
-        />
-
-        <TradePlan
-          result={result}
-          currency={portfolio.settings.baseCurrency}
-          onExportCsv={exportCsv}
         />
 
         <SettingsDialog
@@ -328,7 +423,7 @@ export default function App() {
 
         <RefreshDialog
           report={refreshReport}
-          baseCurrency={portfolio.settings.baseCurrency}
+          baseCurrency={base}
           onClose={() => setRefreshReport(null)}
         />
 
@@ -341,10 +436,17 @@ export default function App() {
       {toast && (
         <div
           role="status"
-          className="card fixed bottom-5 left-1/2 z-50 -translate-x-1/2 px-4 py-2.5 text-sm"
+          className="card no-print fixed bottom-5 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 py-2 pl-4 pr-2 text-sm"
           style={{ boxShadow: 'var(--shadow-overlay)' }}
         >
-          {toast}
+          <span className="min-w-0">{toast.text}</span>
+          {toast.action ? (
+            <button className="btn !py-1 font-semibold text-[var(--accent)]" onClick={toast.action.run}>
+              {toast.action.label}
+            </button>
+          ) : (
+            <span className="pr-2" />
+          )}
         </div>
       )}
     </div>

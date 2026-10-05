@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useId, useRef } from 'react';
 import type { Portfolio, Settings } from '../types';
 import { SettingsPanel } from './SettingsPanel';
@@ -100,7 +101,7 @@ export function SettingsDialog({
             </p>
           </div>
           <button ref={closeRef} className="btn btn-ghost !px-2" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={17} aria-hidden />
           </button>
         </header>
 

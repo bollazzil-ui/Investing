@@ -1,3 +1,4 @@
+import { TriangleAlert, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { CalcResult, Position } from '../types';
 import { formatMoney, formatPercent } from '../lib/format';
@@ -129,7 +130,7 @@ export function ExposureDialog({
             </p>
           </div>
           <button ref={closeRef} className="btn btn-ghost !px-2" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={17} aria-hidden />
           </button>
         </header>
 
@@ -207,11 +208,11 @@ export function ExposureDialog({
               className="rounded-[var(--r-md)] border border-[var(--border)] px-3 py-2 text-xs leading-relaxed text-[var(--ink-2)]"
               style={{ background: 'var(--warning-soft)' }}
             >
-              <span aria-hidden>⚠ </span>
+              <TriangleAlert size={13} className="mr-1 inline align-[-2px]" aria-hidden />
               <strong>{data.unclassifiedPositions.join(', ')}</strong>{' '}
               {data.unclassifiedPositions.length === 1 ? 'is' : 'are'} not recognised, so{' '}
               {data.unclassifiedPositions.length === 1 ? 'it is' : 'they are'} shown as
-              unclassified. Expand the position (▸) and choose the index it tracks under{' '}
+              unclassified. Open the position’s details and choose the index it tracks under{' '}
               <em>Exposure</em>.
             </p>
           )}
