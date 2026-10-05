@@ -188,6 +188,31 @@ async function refreshPrice(
   };
 }
 
+/** The values a refresh fetched: FX rates, and prices keyed by position id. */
+export interface RefreshUpdates {
+  fxRates: Record<string, number>;
+  prices: Record<string, { unitPrice: number; quoteSymbol?: string }>;
+}
+
+/**
+ * Writes fetched values onto a portfolio. Only the fetched fields change, so
+ * applying it to the *current* portfolio keeps any edit the user made while
+ * the refresh was in flight; a position deleted meanwhile is simply skipped.
+ */
+export function applyRefresh(portfolio: Portfolio, updates: RefreshUpdates): Portfolio {
+  return {
+    ...portfolio,
+    settings: {
+      ...portfolio.settings,
+      fxRates: { ...portfolio.settings.fxRates, ...updates.fxRates },
+    },
+    positions: portfolio.positions.map((p) => {
+      const u = updates.prices[p.id];
+      return u ? { ...p, ...u } : p;
+    }),
+  };
+}
+
 /**
  * Refreshes every rate and price, and returns both the updated portfolio and a
  * per-item report. The portfolio is never mutated, and a value that could not
@@ -197,7 +222,7 @@ async function refreshPrice(
 export async function refreshAll(
   portfolio: Portfolio,
   deps: RefreshDeps = {},
-): Promise<{ portfolio: Portfolio; report: RefreshReport }> {
+): Promise<{ portfolio: Portfolio; updates: RefreshUpdates; report: RefreshReport }> {
   const fetchFxImpl = deps.fetchFx ?? fetchFxRates;
   const fetchPriceImpl = deps.fetchPrice ?? fetchQuote;
   const { signal } = deps;
@@ -207,24 +232,14 @@ export async function refreshAll(
     Promise.all(portfolio.positions.map((p) => refreshPrice(p, fetchPriceImpl, signal))),
   ]);
 
-  const next: Portfolio = {
-    ...portfolio,
-    settings: {
-      ...portfolio.settings,
-      fxRates: { ...portfolio.settings.fxRates, ...fx.rates },
-    },
-    positions: portfolio.positions.map((p, i) => {
-      const r = priceResults[i];
-      if (r.price === undefined) return p;
-      return {
-        ...p,
-        unitPrice: r.price,
-        // Remember the symbol that worked, in the provider's own form, so next
-        // time is one request.
-        quoteSymbol: r.symbol,
-      };
-    }),
-  };
+  const updates: RefreshUpdates = { fxRates: fx.rates, prices: {} };
+  portfolio.positions.forEach((p, i) => {
+    const r = priceResults[i];
+    // Remember the symbol that worked, in the provider's own form, so next
+    // time is one request.
+    if (r.price !== undefined) updates.prices[p.id] = { unitPrice: r.price, quoteSymbol: r.symbol };
+  });
+  const next = applyRefresh(portfolio, updates);
 
   const prices = priceResults.map((r) => r.item);
   const all = [...fx.items, ...prices];
@@ -234,6 +249,7 @@ export async function refreshAll(
 
   return {
     portfolio: next,
+    updates,
     report: {
       fx: fx.items,
       prices,
