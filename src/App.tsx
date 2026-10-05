@@ -379,6 +379,23 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-[100rem] space-y-4 px-4 py-5 sm:px-6">
+        <CashToInvest
+          portfolio={portfolio}
+          result={result}
+          onChange={setSettings}
+          onRefreshFx={refreshFx}
+          fxStatus={fxStatus}
+        />
+
+        <PositionsTable
+          portfolio={portfolio}
+          result={result}
+          onChange={setPositions}
+          onRemove={removePosition}
+          onRefreshQuote={refreshQuote}
+          quoteStatus={quoteStatus}
+        />
+
         <TradePlan
           result={result}
           currency={base}
@@ -396,22 +413,6 @@ export default function App() {
               onOpenSettings={() => setSettingsOpen(true)}
             />
           }
-        />
-
-        <PositionsTable
-          portfolio={portfolio}
-          result={result}
-          onChange={setPositions}
-          onRemove={removePosition}
-          onRefreshQuote={refreshQuote}
-          quoteStatus={quoteStatus}
-        />
-        <CashToInvest
-          portfolio={portfolio}
-          result={result}
-          onChange={setSettings}
-          onRefreshFx={refreshFx}
-          fxStatus={fxStatus}
         />
 
         <SettingsDialog
