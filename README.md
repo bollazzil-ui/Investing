@@ -259,6 +259,22 @@ CORS-enabled, so it is called directly. Should a browser refuse that call, the
 lookup retries once through `/api/openfigi` — proxied in dev, and worth
 configuring in production alongside the Stooq path.
 
+### API keys
+
+Keys go in `.env.local`, which git ignores, so they never reach GitHub:
+
+```bash
+cp .env.example .env.local   # then fill in the keys and restart npm run dev
+```
+
+| Variable | Used for |
+| --- | --- |
+| `STOOQ_API_KEY` | Share prices — Stooq has required a key since early 2026. Get one at <https://stooq.com/q/d/?s=spy.us&get_apikey>. |
+| `OPENFIGI_API_KEY` | Optional; raises the OpenFIGI rate limit on the proxied lookup path. |
+
+The dev server's proxy attaches the keys to outgoing requests; they are never
+bundled into the browser code. A production proxy has to add them the same way.
+
 As Netlify redirects in `netlify.toml`:
 
 ```toml
