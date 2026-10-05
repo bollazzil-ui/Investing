@@ -36,9 +36,18 @@ export function ExposureDialog({
   const [dimension, setDimension] = useState<Dimension>('continent');
   const [basis, setBasis] = useState<Basis>(result.currentTotal > 0 ? 'current' : 'target');
   const [hover, setHover] = useState<{ row: ExposureRow; x: number; y: number } | null>(null);
+  // The parent passes a fresh onClose on every render. Reading it through a
+  // ref keeps the effect below from re-running (and bouncing focus out of the
+  // dialog and back) whenever the portfolio changes while the dialog is open.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
+    // Each opening starts fresh: no tooltip left over from last time, and
+    // holdings whenever there are any.
+    setHover(null);
+    setBasis(result.currentTotal > 0 ? 'current' : 'target');
     restoreFocusTo.current = document.activeElement as HTMLElement | null;
     const t = setTimeout(() => closeRef.current?.focus(), 30);
     const previous = document.body.style.overflow;
@@ -46,7 +55,7 @@ export function ExposureDialog({
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !dialogRef.current) return;
@@ -71,7 +80,7 @@ export function ExposureDialog({
       document.removeEventListener('keydown', onKeyDown, true);
       restoreFocusTo.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const amounts = useMemo(() => {
     const out: Record<string, number> = {};
@@ -217,7 +226,7 @@ export function ExposureDialog({
                     <span className="font-medium text-[var(--ink-1)]">{p.ticker || p.name || '—'}</span>
                     <span className="ml-auto text-[var(--ink-3)]">
                       {profile ? profile.label : 'Not recognised'}
-                      {profile && !p.exposureProfile && ' (auto)'}
+                      {profile && profile.id !== p.exposureProfile && ' (auto)'}
                     </span>
                   </li>
                 );

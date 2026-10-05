@@ -83,3 +83,9 @@ describe('foldTail', () => {
     expect(out[2].value).toBe(6);
   });
 });
+
+describe('profileFor with an unknown saved profile', () => {
+  it('falls back to detection', () => {
+    expect(profileFor(pos({ ticker: 'SWDA', exposureProfile: 'no-such-index' }))?.id).toBe('msci-world');
+  });
+});

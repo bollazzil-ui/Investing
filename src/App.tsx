@@ -21,7 +21,7 @@ import { AllocationChart } from './components/AllocationChart';
 import { TradePlan } from './components/TradePlan';
 import { TextField } from './components/primitives';
 import { RefreshDialog } from './components/RefreshDialog';
-import { REFRESH_TIMEOUT_MS, refreshAll, type RefreshReport } from './lib/refresh';
+import { REFRESH_TIMEOUT_MS, applyRefresh, refreshAll, type RefreshReport } from './lib/refresh';
 
 type FxStatus = 'idle' | 'loading' | { asOf: string } | { error: string };
 type QuoteStatus = Record<string, 'loading' | 'ok' | { error: string } | undefined>;
@@ -129,10 +129,12 @@ export default function App() {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS);
     try {
-      const { portfolio: next, report } = await refreshAll(portfolio, {
+      const { updates, report } = await refreshAll(portfolio, {
         signal: controller.signal,
       });
-      setPortfolio(next);
+      // Applied to the latest state, not the snapshot the refresh started
+      // from, so edits made while it ran are kept.
+      setPortfolio((current) => applyRefresh(current, updates));
       if (report.clean) {
         setToast(
           report.updated > 0

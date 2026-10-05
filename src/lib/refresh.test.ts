@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { neededCurrencies, refreshAll } from './refresh';
+import { applyRefresh, neededCurrencies, refreshAll } from './refresh';
 import type { Portfolio, Position, Settings } from '../types';
 import type { FxResult, QuoteResult } from './quotes';
 
@@ -280,5 +280,21 @@ describe('refreshAll — naming exactly what failed', () => {
     });
     expect(report.clean).toBe(true);
     expect(report.updated).toBe(0);
+  });
+});
+
+describe('applyRefresh', () => {
+  it('keeps edits made while the refresh was running', async () => {
+    const before = make([pos(), pos({ id: 'b', ticker: 'EIMI', quoteSymbol: 'EIMI.L' })]);
+    const { updates } = await refreshAll(before, {
+      fetchFx: async () => fxOk({ USD: 0.8 }),
+      fetchPrice: async (symbol) => ({ symbol, price: 100, currency: 'USD' }),
+    });
+    // Meanwhile the user changed a share count and deleted a position.
+    const edited = { ...before, positions: [{ ...before.positions[0], shares: 250 }] };
+    const after = applyRefresh(edited, updates);
+    expect(after.positions).toHaveLength(1);
+    expect(after.positions[0]).toMatchObject({ shares: 250, unitPrice: 100 });
+    expect(after.settings.fxRates.USD).toBe(0.8);
   });
 });

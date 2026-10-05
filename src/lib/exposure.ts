@@ -204,7 +204,10 @@ const BY_TICKER: Record<string, string> = {
  * match on ISIN, then on ticker. `undefined` means unclassified.
  */
 export function profileFor(position: Position): ExposureProfile | undefined {
-  if (position.exposureProfile) return PROFILE_BY_ID.get(position.exposureProfile);
+  // An id this version does not know (e.g. from an imported file) falls back
+  // to detection instead of hiding the position as unclassified.
+  const chosen = position.exposureProfile && PROFILE_BY_ID.get(position.exposureProfile);
+  if (chosen) return chosen;
   const isin = position.isin?.trim().toUpperCase();
   const byIsin = isin ? BY_ISIN[isin] : undefined;
   if (byIsin) return PROFILE_BY_ID.get(byIsin);
