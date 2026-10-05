@@ -202,6 +202,14 @@ when you have no code to hand. Removing a product you still hold asks first.
 Expand a row (▸) in advanced mode for full name, ISIN, quote symbol and the
 *hold* flag.
 
+- **Exposure** opens a look-through of what the positions hold underneath, by
+  continent, country or currency, for today's holdings or the target. Each
+  position is matched to the index it tracks (from its ISIN or ticker) and that
+  index's approximate country weights are blended by value. An ETF that is not
+  recognised shows as *unclassified*; pick its index under *Exposure* in the
+  expanded row. The weights are rounded 2025 snapshots, so treat the result as
+  the big picture. *Currency* means the currency of the companies held, and a
+  currency-hedged fund counts as its hedge currency.
 - **Normalise to 100%** scales every target proportionally so they add up.
 - **Equal weights** gives every position `1/n`.
 - Any currency code works — enter a rate for it under *Exchange rates*, or fetch

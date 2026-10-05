@@ -54,6 +54,7 @@ export function hydrate(raw: unknown): Portfolio {
       // Symbols saved in the old Stooq form (swda.uk) are converted to Yahoo's.
       quoteSymbol: p?.quoteSymbol ? toYahooSymbol(String(p.quoteSymbol)) || undefined : undefined,
       locked: Boolean(p?.locked),
+      exposureProfile: p?.exposureProfile ? String(p.exposureProfile) : undefined,
     })),
   };
 }
