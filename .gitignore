@@ -4,3 +4,8 @@ dist
 *.local
 .vite
 tsconfig.tsbuildinfo
+
+# Local secrets — API keys go in .env.local (see .env.example)
+.env
+.env.*
+!.env.example
