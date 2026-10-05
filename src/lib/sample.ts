@@ -35,7 +35,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
       shares: 516,
       targetWeight: 0.3,
       fee: 20, // USD, the currency EIMI trades in
-      quoteSymbol: 'eimi.uk',
+      quoteSymbol: 'EIMI.L',
     },
     {
       id: 'p_swda',
@@ -47,7 +47,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
       shares: 357,
       targetWeight: 0.60298,
       fee: 20,
-      quoteSymbol: 'swda.uk',
+      quoteSymbol: 'SWDA.L',
     },
     {
       id: 'p_iusn',
@@ -59,7 +59,7 @@ export const SAMPLE_PORTFOLIO: Portfolio = {
       shares: 754,
       targetWeight: 0.09702,
       fee: 38,
-      quoteSymbol: 'iusn.de',
+      quoteSymbol: 'IUSN.DE',
     },
   ],
 };

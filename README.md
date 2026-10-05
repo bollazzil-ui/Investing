@@ -186,7 +186,7 @@ in:
 2. [OpenFIGI](https://www.openfigi.com/api) maps the code to a symbol, a name
    and a listing exchange. One ISIN usually lists on several venues; the one
    picked is whichever can be priced and has an unambiguous currency.
-3. Stooq supplies the last price for that symbol.
+3. Yahoo Finance supplies the last price for that symbol, and the currency it trades in.
 
 Every field stays editable, and each carries a badge saying where its value came
 from — **✓ found** for something the lookup established, **⚠ check** for
@@ -247,21 +247,35 @@ Both are optional; the app is fully usable with manual entry.
 
 **Exchange rates** come from [Frankfurter](https://frankfurter.dev) (ECB
 reference rates, no API key, CORS-enabled) and work straight from the browser.
-Rates are stored as *base currency per 1 unit of the foreign currency* —
+If Frankfurter cannot be reached, the app falls back to Yahoo Finance's FX
+quotes. Rates are stored as *base currency per 1 unit of the foreign currency* —
 `1 USD = 0.8505 CHF`.
 
-**Share prices** come from Stooq, which sends no CORS headers, so the browser
-cannot call it directly. The Vite dev server proxies `/api/stooq` for local use.
-To make *Fetch* work on a deployed build, put an equivalent proxy at that path.
+**Share prices** come from Yahoo Finance's chart endpoint, which needs no key
+but sends no CORS headers, so the browser cannot call it directly. The Vite dev
+server proxies `/api/yahoo` for local use. To make *Fetch* work on a deployed
+build, put an equivalent proxy at that path. Yahoo's endpoint is unofficial: it
+can rate-limit heavy use or change without notice, in which case the refresh
+report says so and every price stays editable by hand.
+
+Quote symbols use Yahoo's exchange suffixes: `SWDA.L` (London), `IUSN.DE`
+(Xetra), `CHSPI.SW` (SIX), `VWCE.DE`, and no suffix for US listings (`VTI`).
+Symbols saved in the older Stooq form (`swda.uk`, `iusn.de`) are converted
+automatically.
+
+Yahoo reports the currency each listing trades in, and London prices quoted in
+pence are converted to pounds. **A price whose currency does not match the
+position is never applied** — the report names both currencies, so you can fix
+the position's currency or pick the listing that trades in yours.
 
 **Instrument lookup** uses OpenFIGI, which needs no key and is documented as
 CORS-enabled, so it is called directly. Should a browser refuse that call, the
 lookup retries once through `/api/openfigi` — proxied in dev, and worth
-configuring in production alongside the Stooq path.
+configuring in production alongside the Yahoo path.
 
 ### API keys
 
-Keys go in `.env.local`, which git ignores, so they never reach GitHub:
+Optional keys go in `.env.local`, which git ignores, so they never reach GitHub:
 
 ```bash
 cp .env.example .env.local   # then fill in the keys and restart npm run dev
@@ -269,7 +283,6 @@ cp .env.example .env.local   # then fill in the keys and restart npm run dev
 
 | Variable | Used for |
 | --- | --- |
-| `STOOQ_API_KEY` | Share prices — Stooq has required a key since early 2026. Get one at <https://stooq.com/q/d/?s=spy.us&get_apikey>. |
 | `OPENFIGI_API_KEY` | Optional; raises the OpenFIGI rate limit on the proxied lookup path. |
 
 The dev server's proxy attaches the keys to outgoing requests; they are never
@@ -279,8 +292,8 @@ As Netlify redirects in `netlify.toml`:
 
 ```toml
 [[redirects]]
-  from = "/api/stooq/*"
-  to = "https://stooq.com/:splat"
+  from = "/api/yahoo/*"
+  to = "https://query1.finance.yahoo.com/:splat"
   status = 200
   force = true
 
@@ -294,9 +307,8 @@ As Netlify redirects in `netlify.toml`:
 OpenFIGI allows roughly 25 lookups a minute without an API key; the dialog
 reports rate limiting in plain words rather than failing silently.
 
-Stooq symbols carry an exchange suffix: `swda.uk`, `iusn.de`. Without a proxy
-the *Fetch* button reports that the service is unreachable and the price stays
-whatever you typed.
+Without a proxy the *Fetch* button reports that the service is unreachable and
+the price stays whatever you typed.
 
 ---
 

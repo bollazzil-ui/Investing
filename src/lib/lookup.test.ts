@@ -56,7 +56,7 @@ describe('parseFigiResponse', () => {
 
 describe('pickBestMatch', () => {
   it('prefers a venue that can be priced and has one currency', () => {
-    // Xetra (GY) is priceable via Stooq and is EUR-only; London lists in several.
+    // Xetra (GY) is EUR-only; London lists in several currencies.
     expect(pickBestMatch(parseFigiResponse(FIGI_SWDA))?.exchCode).toBe('GY');
   });
 
@@ -76,19 +76,20 @@ describe('pickBestMatch', () => {
 
 describe('quoteCandidates', () => {
   it('leads with the suffix implied by the exchange', () => {
-    expect(quoteCandidates('EUNL', 'GY')[0]).toBe('eunl.de');
-    expect(quoteCandidates('SWDA', 'LN')[0]).toBe('swda.uk');
+    expect(quoteCandidates('EUNL', 'GY')[0]).toBe('EUNL.DE');
+    expect(quoteCandidates('SWDA', 'LN')[0]).toBe('SWDA.L');
+    expect(quoteCandidates('VTI', 'US')[0]).toBe('VTI');
   });
 
-  it('keeps a suffix the user typed', () => {
-    expect(quoteCandidates('vwrl.uk')).toContain('vwrl.uk');
+  it('keeps a suffix the user typed, converting the old Stooq form', () => {
+    expect(quoteCandidates('VWRL.L')).toEqual(['VWRL.L']);
+    expect(quoteCandidates('vwrl.uk')).toEqual(['VWRL.L']);
   });
 
   it('falls back to common venues, without duplicates', () => {
     const c = quoteCandidates('SWDA');
     expect(c).toEqual([...new Set(c)]);
-    expect(c).toContain('swda.uk');
-    expect(c).toContain('swda.us');
+    expect(c).toEqual(['SWDA.L', 'SWDA.DE', 'SWDA.SW', 'SWDA']);
   });
 
   it('returns nothing for an empty symbol', () => {
@@ -109,7 +110,7 @@ describe('titleCase', () => {
 
 describe('lookupInstrument', () => {
   const quoteOk = vi.fn(async (symbol: string) => {
-    if (symbol === 'eunl.de') return { price: 89.84 };
+    if (symbol === 'EUNL.DE') return { price: 89.84 };
     throw new Error('no data');
   });
 
@@ -122,13 +123,28 @@ describe('lookupInstrument', () => {
     expect(r.name).toBe('iShares Core MSCI World');
     expect(r.currency).toBe('EUR');
     expect(r.unitPrice).toBe(89.84);
-    expect(r.quoteSymbol).toBe('eunl.de');
+    expect(r.quoteSymbol).toBe('EUNL.DE');
     expect(r.sources).toEqual({
       ticker: 'lookup',
       name: 'lookup',
       currency: 'guess', // derived from the exchange, never authoritative
       unitPrice: 'lookup',
     });
+  });
+
+  it('takes the currency from the quote when the provider reports one', async () => {
+    const fetchImpl: FetchLike = async () => jsonResponse(FIGI_SWDA);
+    const r = await lookupInstrument('IE00B4L5Y983', {
+      fetchImpl,
+      preferredExchanges: ['LN'],
+      quoteImpl: async (symbol) => {
+        if (symbol === 'SWDA.L') return { symbol, price: 78.1, currency: 'GBP' };
+        throw new Error('no data');
+      },
+    });
+    expect(r.currency).toBe('GBP');
+    expect(r.sources.currency).toBe('lookup');
+    expect(r.notes.join(' ')).not.toMatch(/more than one currency/);
   });
 
   it('rejects a mistyped ISIN before making any request', async () => {

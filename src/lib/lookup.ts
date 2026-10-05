@@ -4,17 +4,17 @@
  * Two providers, both free and key-less:
  *   - OpenFIGI (api.openfigi.com/v3/mapping) maps an ISIN or ticker to a
  *     symbol, a name and a listing exchange.
- *   - Stooq supplies the last price for a symbol.
+ *   - Yahoo Finance supplies the last price and the currency it is quoted in.
  *
- * Neither returns a trading currency, so that is derived from the listing
- * exchange and always reported as a guess for the user to confirm — a London
- * listing in particular can be quoted in USD, GBP or EUR.
+ * OpenFIGI returns no trading currency. When Yahoo prices the listing, its
+ * currency is used; otherwise one is derived from the listing exchange and
+ * reported as a guess — a London listing can be quoted in USD, GBP or EUR.
  *
  * Everything here is best-effort. Any failure leaves the form usable by hand;
  * nothing is silently invented.
  */
 import { isValidIsin, looksLikeIsin, normalizeIsin } from './isin';
-import { fetchQuote } from './quotes';
+import { fetchQuote, toYahooSymbol } from './quotes';
 
 /** Where a filled-in field came from, so the form can flag what to check. */
 export type FieldSource = 'lookup' | 'guess' | 'none';
@@ -43,39 +43,40 @@ export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 /**
  * Listing exchange → what we can infer from it.
  *
- * `stooqSuffix` is null where Stooq has no coverage we can rely on, and
- * `currency` is null where the exchange lists in more than one currency.
+ * `yahooSuffix` is the exchange suffix on a Yahoo Finance symbol ('' for US
+ * listings, which carry none), and `currency` is null where the exchange lists
+ * in more than one currency.
  */
 interface ExchangeInfo {
   label: string;
-  stooqSuffix: string | null;
+  yahooSuffix: string;
   currency: string | null;
 }
 
 export const EXCHANGES: Record<string, ExchangeInfo> = {
-  LN: { label: 'London Stock Exchange', stooqSuffix: '.uk', currency: null },
-  GY: { label: 'Xetra', stooqSuffix: '.de', currency: 'EUR' },
-  GR: { label: 'Xetra', stooqSuffix: '.de', currency: 'EUR' },
-  GF: { label: 'Frankfurt', stooqSuffix: '.de', currency: 'EUR' },
-  GD: { label: 'Düsseldorf', stooqSuffix: '.de', currency: 'EUR' },
-  GM: { label: 'Munich', stooqSuffix: '.de', currency: 'EUR' },
-  SW: { label: 'SIX Swiss Exchange', stooqSuffix: null, currency: 'CHF' },
-  SE: { label: 'SIX Swiss Exchange', stooqSuffix: null, currency: 'CHF' },
-  VX: { label: 'SIX Swiss Exchange', stooqSuffix: null, currency: 'CHF' },
-  US: { label: 'United States', stooqSuffix: '.us', currency: 'USD' },
-  UN: { label: 'NYSE', stooqSuffix: '.us', currency: 'USD' },
-  UQ: { label: 'Nasdaq', stooqSuffix: '.us', currency: 'USD' },
-  UW: { label: 'Nasdaq', stooqSuffix: '.us', currency: 'USD' },
-  UA: { label: 'NYSE American', stooqSuffix: '.us', currency: 'USD' },
-  UR: { label: 'NYSE Arca', stooqSuffix: '.us', currency: 'USD' },
-  NA: { label: 'Euronext Amsterdam', stooqSuffix: null, currency: 'EUR' },
-  FP: { label: 'Euronext Paris', stooqSuffix: null, currency: 'EUR' },
-  IM: { label: 'Borsa Italiana', stooqSuffix: null, currency: 'EUR' },
-  SM: { label: 'Bolsa de Madrid', stooqSuffix: null, currency: 'EUR' },
-  CN: { label: 'Toronto', stooqSuffix: null, currency: 'CAD' },
-  JT: { label: 'Tokyo', stooqSuffix: '.jp', currency: 'JPY' },
-  HK: { label: 'Hong Kong', stooqSuffix: '.hk', currency: 'HKD' },
-  AT: { label: 'Australia', stooqSuffix: null, currency: 'AUD' },
+  LN: { label: 'London Stock Exchange', yahooSuffix: '.L', currency: null },
+  GY: { label: 'Xetra', yahooSuffix: '.DE', currency: 'EUR' },
+  GR: { label: 'Xetra', yahooSuffix: '.DE', currency: 'EUR' },
+  GF: { label: 'Frankfurt', yahooSuffix: '.F', currency: 'EUR' },
+  GD: { label: 'Düsseldorf', yahooSuffix: '.DU', currency: 'EUR' },
+  GM: { label: 'Munich', yahooSuffix: '.MU', currency: 'EUR' },
+  SW: { label: 'SIX Swiss Exchange', yahooSuffix: '.SW', currency: 'CHF' },
+  SE: { label: 'SIX Swiss Exchange', yahooSuffix: '.SW', currency: 'CHF' },
+  VX: { label: 'SIX Swiss Exchange', yahooSuffix: '.SW', currency: 'CHF' },
+  US: { label: 'United States', yahooSuffix: '', currency: 'USD' },
+  UN: { label: 'NYSE', yahooSuffix: '', currency: 'USD' },
+  UQ: { label: 'Nasdaq', yahooSuffix: '', currency: 'USD' },
+  UW: { label: 'Nasdaq', yahooSuffix: '', currency: 'USD' },
+  UA: { label: 'NYSE American', yahooSuffix: '', currency: 'USD' },
+  UR: { label: 'NYSE Arca', yahooSuffix: '', currency: 'USD' },
+  NA: { label: 'Euronext Amsterdam', yahooSuffix: '.AS', currency: 'EUR' },
+  FP: { label: 'Euronext Paris', yahooSuffix: '.PA', currency: 'EUR' },
+  IM: { label: 'Borsa Italiana', yahooSuffix: '.MI', currency: 'EUR' },
+  SM: { label: 'Bolsa de Madrid', yahooSuffix: '.MC', currency: 'EUR' },
+  CN: { label: 'Toronto', yahooSuffix: '.TO', currency: 'CAD' },
+  JT: { label: 'Tokyo', yahooSuffix: '.T', currency: 'JPY' },
+  HK: { label: 'Hong Kong', yahooSuffix: '.HK', currency: 'HKD' },
+  AT: { label: 'Australia', yahooSuffix: '.AX', currency: 'AUD' },
 };
 
 /** One instrument as OpenFIGI describes it. */
@@ -129,7 +130,6 @@ export function pickBestMatch(matches: FigiMatch[], preferred?: string[]): FigiM
     const info = m.exchCode ? EXCHANGES[m.exchCode] : undefined;
     let s = 0;
     if (preferred && m.exchCode && preferred.includes(m.exchCode)) s += 8;
-    if (info?.stooqSuffix) s += 4; // we can fetch a price
     if (info?.currency) s += 2; // we can name a currency
     if (info) s += 1; // at least a known venue
     return s;
@@ -138,20 +138,23 @@ export function pickBestMatch(matches: FigiMatch[], preferred?: string[]): FigiM
   return [...withTicker].sort((a, b) => score(b) - score(a))[0];
 }
 
-/** Symbols worth trying against Stooq, most likely first. */
+/** Symbols worth trying against Yahoo Finance, most likely first. */
 export function quoteCandidates(ticker: string, exchCode?: string): string[] {
-  const base = ticker.trim().toLowerCase().replace(/\s+/g, '');
+  const base = toYahooSymbol(ticker);
   if (!base) return [];
   const out: string[] = [];
-  const suffix = exchCode ? EXCHANGES[exchCode]?.stooqSuffix : undefined;
-  if (suffix) out.push(base + suffix);
+  const known = exchCode ? EXCHANGES[exchCode] : undefined;
+  if (known) out.push(base + known.yahooSuffix);
   // A symbol the user typed may already carry its own suffix.
-  if (/\.[a-z]{2,3}$/.test(base)) out.push(base);
-  for (const s of ['.uk', '.de', '.us']) {
+  if (/\.[A-Z]{1,3}$/.test(base)) {
+    if (!out.includes(base)) out.push(base);
+    return out;
+  }
+  // Otherwise try the venues European ETFs most often list on, then the US.
+  for (const s of ['.L', '.DE', '.SW', '']) {
     const candidate = base + s;
     if (!out.includes(candidate)) out.push(candidate);
   }
-  if (!out.includes(base)) out.push(base);
   return out;
 }
 
@@ -206,7 +209,10 @@ export async function lookupInstrument(
   rawQuery: string,
   options: {
     fetchImpl?: FetchLike;
-    quoteImpl?: (symbol: string, signal?: AbortSignal) => Promise<{ price: number }>;
+    quoteImpl?: (
+      symbol: string,
+      signal?: AbortSignal,
+    ) => Promise<{ price: number; symbol?: string; currency?: string }>;
     signal?: AbortSignal;
     /** Exchange codes to favour, e.g. the venues the user actually trades on. */
     preferredExchanges?: string[];
@@ -266,7 +272,7 @@ export async function lookupInstrument(
   } else if (!isIsinShaped) {
     // Nothing was resolved; this is simply the symbol the user typed, so it is
     // carried forward as a convenience and never badged as a lookup result.
-    result.ticker = query.toUpperCase().replace(/\.[A-Z]{2,3}$/, '');
+    result.ticker = query.toUpperCase().replace(/\.[A-Z]{1,3}$/, '');
     result.sources.ticker = 'none';
   }
   if (match?.name) {
@@ -286,7 +292,7 @@ export async function lookupInstrument(
     }
   }
 
-  // 2. Price, from whichever candidate symbol Stooq recognises.
+  // 2. Price and currency, from whichever candidate symbol Yahoo recognises.
   const candidates = quoteCandidates(result.ticker ?? query, match?.exchCode);
   let priced = false;
   for (const symbol of candidates) {
@@ -295,8 +301,14 @@ export async function lookupInstrument(
       const quote = await quoteImpl(symbol, options.signal);
       if (quote.price > 0) {
         result.unitPrice = quote.price;
-        result.quoteSymbol = symbol;
+        result.quoteSymbol = quote.symbol ?? symbol;
         result.sources.unitPrice = 'lookup';
+        if (quote.currency) {
+          // The price is in this currency, so it is a fact, not a guess.
+          result.currency = quote.currency;
+          result.sources.currency = 'lookup';
+          result.notes = result.notes.filter((n) => !n.includes('more than one currency'));
+        }
         priced = true;
         break;
       }

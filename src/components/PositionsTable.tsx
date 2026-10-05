@@ -255,12 +255,12 @@ export function PositionsTable({
                             />
                           </div>
                           <div>
-                            <label className="label">Quote symbol (Stooq)</label>
+                            <label className="label">Quote symbol (Yahoo Finance)</label>
                             <div className="flex gap-2">
                               <TextField
                                 value={p.quoteSymbol ?? ''}
                                 onChange={(v) => update(p.id, { quoteSymbol: v })}
-                                placeholder="swda.uk"
+                                placeholder="SWDA.L"
                               />
                               <button
                                 className="btn"

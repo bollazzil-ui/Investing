@@ -40,6 +40,7 @@ const fxOk = (rates: Record<string, number>, missing: string[] = []): FxResult =
   rates,
   asOf: '2026-08-28',
   missing,
+  source: 'ECB reference rates',
 });
 
 describe('neededCurrencies', () => {
@@ -171,15 +172,46 @@ describe('refreshAll — naming exactly what failed', () => {
     expect(report.prices[0].reason).toMatch(/Set a quote symbol/);
   });
 
+  it('never applies a price quoted in another currency than the position', async () => {
+    const { portfolio, report } = await refreshAll(
+      make([pos({ quoteSymbol: 'SWDA.L', currency: 'USD', unitPrice: 89.84 })]),
+      {
+        fetchFx: async () => fxOk({ USD: 0.85 }),
+        fetchPrice: async () => ({ symbol: 'SWDA.L', price: 78.1, currency: 'GBP' }),
+      },
+    );
+    expect(portfolio.positions[0].unitPrice).toBe(89.84);
+    expect(report.prices[0].status).toBe('failed');
+    expect(report.prices[0].reason).toMatch(/quoted in GBP, but the position is in USD/);
+  });
+
+  it('moves past a wrong-currency listing to one in the right currency', async () => {
+    const { portfolio, report } = await refreshAll(
+      make([pos({ quoteSymbol: undefined, ticker: 'SWDA', currency: 'EUR' })]),
+      {
+        fetchFx: async () => fxOk({ EUR: 0.93 }),
+        fetchPrice: async (s) =>
+          s === 'SWDA.L'
+            ? { symbol: s, price: 78.1, currency: 'GBP' }
+            : s === 'SWDA.DE'
+              ? { symbol: s, price: 95.2, currency: 'EUR' }
+              : Promise.reject(new Error('nope')),
+      },
+    );
+    expect(portfolio.positions[0].unitPrice).toBe(95.2);
+    expect(portfolio.positions[0].quoteSymbol).toBe('SWDA.DE');
+    expect(report.prices[0].status).toBe('updated');
+  });
+
   it('remembers a symbol that worked, so the next refresh is one request', async () => {
     const { portfolio } = await refreshAll(make([pos({ quoteSymbol: undefined, ticker: 'SWDA' })]), {
       fetchFx: async () => fxOk({ USD: 0.85 }),
       fetchPrice: async (s) => {
-        if (s !== 'swda.us') throw new Error('nope');
+        if (s !== 'SWDA.DE') throw new Error('nope');
         return { symbol: s, price: 92.5 };
       },
     });
-    expect(portfolio.positions[0].quoteSymbol).toBe('swda.us');
+    expect(portfolio.positions[0].quoteSymbol).toBe('SWDA.DE');
     expect(portfolio.positions[0].unitPrice).toBe(92.5);
   });
 
